@@ -60,12 +60,12 @@
     <!-- 操作按钮区：按角色渲染 -->
     <view class="mdc-actions" wx:if="{{showActions}}">
       <!-- 运营者专属（用例14/15） -->
-      <block wx:if="{{role === 'admin' && match.cellStatus === 'help'}}">
+      <block wx:if="{{role === roleAdmin && match.cellStatus === cellStatusHelp}}">
         <button class="mdc-btn mdc-btn-danger" size="mini" catchtap="onForceCancel">强制取消跟场</button>
         <button class="mdc-btn mdc-btn-warn" size="mini" catchtap="onManualReset">手动修改跟场状态</button>
       </block>
       <!-- 已确认部员：取消我的跟场（用例10，按钮显示由页面根据确认状态控制 showActions） -->
-      <button class="mdc-btn mdc-btn-plain" size="mini" wx:if="{{role === 'member' && match.myConfirmed}}" catchtap="onCancelDuty">取消我的跟场</button>
+      <button class="mdc-btn mdc-btn-plain" size="mini" wx:if="{{role === roleMember && match.myConfirmed}}" catchtap="onCancelDuty">取消我的跟场</button>
     </view>
 
   </view>

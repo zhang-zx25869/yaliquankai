@@ -1,5 +1,4 @@
-<!-- 代表队栏目 页面骨架 -->
-<view class="container">
-  <text class="title">代表队栏目</text>
-  <text class="desc">B3 队伍栏目（用例19）— 收尾阶段实现</text>
-</view>
+<page-placeholder
+  title="代表队栏目"
+  description="代表队赛程与历史赛况正在建设中"
+/>

@@ -1,5 +1,4 @@
-<!-- 赛程管理 页面骨架 -->
-<view class="container">
-  <text class="title">赛程管理</text>
-  <text class="desc">B9 赛程表单页（用例3/5）— A同学赛程线</text>
-</view>
+<page-placeholder
+  title="赛程管理"
+  description="赛程发布、修改与取消功能正在建设中"
+/>

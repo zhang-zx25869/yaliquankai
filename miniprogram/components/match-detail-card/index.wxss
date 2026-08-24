@@ -37,7 +37,7 @@
 .mdc-value { font-size: 26rpx; color: #333; flex: 1; }
 .mdc-confirmer { color: #33C275; font-weight: 500; }
 .mdc-score { font-size: 32rpx; font-weight: bold; }
-.mdc-link { color: #4C8BFE; }
+.mdc-link { color: #7a1733; }
 
 .mdc-status-desc {
   margin-top: 16rpx;

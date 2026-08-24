@@ -1,6 +1,6 @@
 // cloudfunctions/DutyManager/index.js
 // 控制类：跟场任务（对应用例6/7/8/9/10）—— B同学跟场线
-// ── 阶段1：空壳 + 契约锁定。所有 action 均返回 501 开发中，业务逻辑阶段4实装 ──
+// ── 契约空壳：所有 action 均返回 501 开发中，业务逻辑待实装 ──
 //
 // action: getRespondPage   —— 响应页聚合数据（比赛信息 + 我的表态 + 本队统计）
 // action: getRescuePage    —— 救场页聚合数据（比赛信息 + 求助原因）
@@ -96,7 +96,7 @@ async function confirmDuty(openid, event) {
 
 // —— 用例7：没空（多人表态分流：单人队直接红；多人队最后一人没空才红）——
 // event: { matchId }
-// 返回 data: { cellStatus, isLastDecliner, remainingCount }
+// 返回 data: { cellStatus, canHelp, remainingCount }
 async function declineDuty(openid, event) {
   return fail(501, "开发中");
 }

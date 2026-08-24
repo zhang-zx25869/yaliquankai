@@ -58,7 +58,7 @@
     </view>
 
     <!-- ── 区3：态度区（用例7/10，按 myStatus + 角色 控显隐） ── -->
-    <view class="card" wx:if="{{role === 'member'}}">
+  <view class="card" wx:if="{{role === roleMember}}">
 
       <!-- 未表态：确认 / 没空 两个按钮 -->
       <block wx:if="{{myStatus === 'none' && match.cellStatus === 'pending'}}">
@@ -87,7 +87,7 @@
     </view>
 
     <!-- ── 区4：求助区（用例8，仅红态且我是责任人） ── -->
-    <view class="card help-card" wx:if="{{match.cellStatus === 'help' && canHelp}}">
+  <view class="card help-card" wx:if="{{match.cellStatus === cellStatusHelp && canHelp}}">
       <view class="section-title help-title">⚠️ 需要帮助</view>
       <text class="help-desc">本场跟场无人确认，请生成求助卡片并转发至体育部大群，同时私聊部长报备。</text>
       <button class="btn btn-danger" open-type="share">生成求助卡片并转发</button>

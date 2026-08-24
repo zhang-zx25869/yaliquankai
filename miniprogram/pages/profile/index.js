@@ -1,6 +1,6 @@
 // pages/profile/index.js
 // B5 我的页（用例1 OpenIDLogin 展示 / 用例2 BindIdentity）
-const { call } = require("../../utils/call");
+const { call, getUser, waitForUser, setUser } = require("../../utils/call");
 const { ROLE, ROLE_META } = require("../../utils/status");
 
 Page({
@@ -18,18 +18,12 @@ Page({
 
   // 从全局缓存刷新身份显示
   refreshUser() {
-    const app = getApp();
     const settle = () => {
-      const u = app.globalData.userInfo || { role: ROLE.GUEST };
+      const u = getUser();
       const meta = ROLE_META[u.role] || ROLE_META[ROLE.GUEST];
       this.setData({ userInfo: u, roleLabel: meta.label, roleDesc: meta.desc });
     };
-    // 若启动时静默登录还没返回，等它完成
-    if (app.silentLogin && !app.globalData.userInfo) {
-      app.silentLogin().then(settle);
-    } else {
-      settle();
-    }
+    waitForUser().then(settle);
   },
 
   onCodeInput(e) {
@@ -46,7 +40,7 @@ Page({
     this.setData({ binding: true });
     try {
       const user = await call("AuthManager", { action: "bindIdentity", code });
-      getApp().globalData.userInfo = user; // 更新全局身份缓存
+      setUser(user);
       this.setData({ codeInput: "" });
       const meta = ROLE_META[user.role] || {};
       wx.showModal({

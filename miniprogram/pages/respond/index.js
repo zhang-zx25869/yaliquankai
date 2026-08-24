@@ -1,8 +1,8 @@
 // pages/respond/index.js
 // B6 跟场响应页（用例6 ViewHistoryStats / 7 RespondSchedule / 8 GenerateHelpCard / 10 CancelMyDuty）
 // ── 阶段2 任务一：数据层（含 mock）。交互逻辑在任务三补全 ──
-const { call, getUser } = require("../../utils/call");
-const { STATUS_META, ROLE } = require("../../utils/status");
+const { call, getUser, waitForUser } = require("../../utils/call");
+const { CELL_STATUS, STATUS_META, ROLE, HOURS } = require("../../utils/status");
 const { MOCK_MATCHES } = require("../../utils/mock");
 
 // mock 开关：开发期 true，阶段4 云函数就绪后改为 false 即接真实数据
@@ -11,6 +11,8 @@ const USE_MOCK = true;
 Page({
   data: {
     role: ROLE.GUEST,
+    roleMember: ROLE.MEMBER,
+    cellStatusHelp: CELL_STATUS.HELP,
     match: null,           // 公共对象（格式化后的 match，含 timeText/demandsText/statusMeta）
     myStatus: "none",      // none | confirmed | declined
     stats: [],             // [{ nickname, count }] 本队跟场统计
@@ -38,16 +40,11 @@ Page({
 
   // 身份：从全局缓存拿 role（处理启动时静默登录未完成的竞态）
   refreshUser() {
-    const app = getApp();
     const settle = () => {
-      const u = getUser() || { role: ROLE.GUEST };
+      const u = getUser();
       this.setData({ role: u.role });
     };
-    if (app.silentLogin && !app.globalData.userInfo) {
-      app.silentLogin().then(settle);
-    } else {
-      settle();
-    }
+    waitForUser().then(settle);
   },
 
   // 统一数据入口：mock / 真实云端只在这一处切换
@@ -64,7 +61,7 @@ Page({
           { nickname: "经理人乙", count: 2 },
         ],
         remainingCount: raw.remainingCount || 1,
-        canHelp: raw.cellStatus === "help", // 求助场默认我是责任人，方便测求助按钮
+        canHelp: raw.cellStatus === CELL_STATUS.HELP, // 求助场默认我是责任人，方便测求助按钮
       });
       this.setData({ loading: false });
       return;
@@ -92,8 +89,8 @@ Page({
     const meta = STATUS_META[raw.cellStatus] || {};
     return {
       ...raw,
-      timeText: this.formatTime(raw.matchTime),
-      demandsText: (raw.demands || []).join("、"),
+      timeText: raw.timeText || this.formatTime(raw.matchTime),
+      demandsText: raw.demandsText || (raw.demands || []).join("、"),
       confirmerName: raw.confirmerNickname || "",
       statusMeta: meta, // { color, label, desc } 供 WXML 渲染色条/文案
     };
@@ -136,7 +133,7 @@ Page({
 
     if (USE_MOCK) {
       // mock：直接置绿（顶部色条由 updateCellStatus 同步刷新）
-      this.updateCellStatus("confirmed");
+      this.updateCellStatus(CELL_STATUS.CONFIRMED);
       this.setData({
         "match.confirmerName": (getUser() || {}).nickname || "我",
         myStatus: "confirmed",
@@ -176,7 +173,7 @@ Page({
         return;
       }
       // remaining <= 1: 我是最后一人 → 拉红 + 解锁求助按钮
-      this.updateCellStatus("help");
+      this.updateCellStatus(CELL_STATUS.HELP);
       this.setData({
         myStatus: "declined",
         canHelp: true,
@@ -195,7 +192,7 @@ Page({
     const m = this.data.match;
     if (!m) return;
 
-    const within48h = m.matchTime - Date.now() < 48 * 3600 * 1000;
+    const within48h = m.matchTime - Date.now() < HOURS.FORCE_RED * 3600 * 1000;
 
     // 二次确认（临期时文案升级为强提醒）
     const first = await wx.showModal({
@@ -210,7 +207,7 @@ Page({
 
     if (USE_MOCK) {
       // mock：回退黄色待确认，释放名额
-      this.updateCellStatus("pending");
+      this.updateCellStatus(CELL_STATUS.PENDING);
       this.setData({
         "match.confirmerName": "",
         myStatus: "none",

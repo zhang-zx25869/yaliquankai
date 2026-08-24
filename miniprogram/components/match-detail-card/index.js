@@ -3,7 +3,7 @@
 // 在 首页日历 / 队伍栏目 / 看板单元格 三处复用
 // 展示：状态标签 + 对阵 + 时间地点 + 后勤需求 + 比分（已归档）
 // 按角色渲染操作按钮：运营者【强制取消跟场】【手动修改跟场状态】；已确认部员【取消我的跟场】
-const { STATUS_META, ROLE } = require("../../utils/status");
+const { CELL_STATUS, STATUS_META, ROLE } = require("../../utils/status");
 
 Component({
   options: {
@@ -42,6 +42,9 @@ Component({
 
   data: {
     statusMeta: {},
+    roleAdmin: ROLE.ADMIN,
+    roleMember: ROLE.MEMBER,
+    cellStatusHelp: CELL_STATUS.HELP,
   },
 
   methods: {

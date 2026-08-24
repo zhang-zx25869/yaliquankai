@@ -64,7 +64,7 @@
       <!-- ── 救场按钮：仅部员 + 求助态 可点 ── -->
       <button
         class="btn btn-danger"
-        wx:if="{{role === 'member'}}"
+      wx:if="{{role === roleMember}}"
         bindtap="onRescue"
         disabled="{{match.cellStatus !== 'help'}}"
       >我来救场</button>

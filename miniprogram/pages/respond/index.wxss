@@ -89,7 +89,7 @@
 }
 .stat-row:last-child { border-bottom: none; }
 .stat-name { font-size: 28rpx; color: #333; }
-.stat-count { font-size: 28rpx; font-weight: 600; color: #4c8bfe; }
+.stat-count { font-size: 28rpx; font-weight: 600; color: #7a1733; }
 .stat-empty { color: #999; font-size: 26rpx; text-align: center; padding: 16rpx 0; }
 
 /* 游客提示条 */
@@ -134,7 +134,7 @@
 }
 .btn::after { border: none; }
 .btn-primary {
-  background: #4c8bfe;
+  background: #7a1733;
   color: #fff;
 }
 .btn-primary:active { background: #3a76e0; }

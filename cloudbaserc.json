@@ -1,13 +1,5 @@
 {
-  "envId": "{{env.ENV_ID}}",
-  "functionRoot": "./functions",
-  "functions": [],
-  "ai": {
-    "defaultAgent": "{{env.AI_DEFAULT_AGENT}}",
-    "agents": {
-      "codebuddy": {
-        "type": "none"
-      }
-    }
-  }
+  "envId": "yaliquankai-d2g2kt52247d144a8",
+  "functionRoot": "./cloudfunctions",
+  "functions": []
 }

@@ -18,37 +18,37 @@ yaliquankai/
 │   │   ├── archive/          # B8 赛后归档页（用例11/12）【C·看板线】
 │   │   └── schedule-form/    # B9 赛程表单页（用例3/5）【A·赛程线】
 │   ├── components/
-│   │   └── match-detail-card/ # B10 共用比赛详情卡片（三处复用）
+│   │   ├── match-detail-card/ # B10 共用比赛详情卡片（三处复用）
+│   │   └── page-placeholder/  # 未完成页面统一占位组件
+│   ├── config/env.js          # develop/trial/release 云环境映射
 │   └── utils/
 │       ├── call.js           # D1 云函数统一调用封装
 │       └── status.js         # D2 状态机常量（黄/绿/红/橙/灰 + 角色）
 ├── cloudfunctions/           # 云函数（控制类）
 │   ├── AuthManager/          # C1 身份认证【已完成】
-│   ├── ScheduleManager/      # C2 赛程管理【A】
-│   ├── DutyManager/          # C3 跟场任务【B】
-│   ├── ArchiveManager/       # C4 赛后归档【C】
-│   ├── DashboardManager/     # C5 看板与裁决【C】
-│   ├── CalendarManager/      # C6 公共日历【收尾】
-│   ├── TeamManager/          # C7 队伍栏目【收尾】
-│   └── TimerChecker/         # C8 定时巡检（48h拉红/到点转橙）【C】
+│   └── DutyManager/          # C3 跟场任务【契约空壳，待实装】
 └── project.config.json
 ```
 
+待创建的业务云函数：`ScheduleManager`、`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
+
 ## 环境信息
 
-- **云环境 ID**：`yaliquankai-d2g2kt52247d144a8`（已写入 `miniprogram/app.js` 与 `envList.js`）
+- **开发云环境 ID**：`yaliquankai-d2g2kt52247d144a8`（配置于 `miniprogram/config/env.js`；体验版和正式版尚未配置）
 - **数据库集合**（权限均为自定义安全规则 `read:false, write:false`，只走云函数）：
-  `UserCollection` / `MatchCollection` / `DutyRecordCollection` / `ArchiveCollection` / `ActivationCodeCollection`
+  `UserCollection` / `MatchCollection` / `DutyRecordCollection` / `ArchiveCollection` / `ActivationCodeCollection` / `TeamCollection`
+- 原 5 个集合已存在；`TeamCollection` 是本次基线新增契约，首次联调前需在控制台创建。
 
 ## 开发环境搭建（每位协作者一次）
 
 1. `git clone` 本仓库；
-2. 微信开发者工具 → 导入项目 → 选择本目录 → AppID：`wx4ce0834c631f61ce`；
-3. 用自己微信扫码登录（需先被添加为小程序「项目成员-开发者」）。
+2. `git switch -c dev --track origin/dev`，再从 `dev` 创建自己的功能分支；
+3. 微信开发者工具 → 导入项目 → 选择本目录 → AppID：`wx4ce0834c631f61ce`；
+4. 用自己微信扫码登录（需先被添加为小程序「项目成员-开发者」）。
 
 ## 协作规范
 
-- **分支**：各自在 `feat/schedule`（A）/ `feat/duty`（B）/ `feat/dashboard`（C）分支开发，完成后 PR 合并到 `main`；
+- **分支**：功能分支从 `dev` 创建并合并回 `dev`；稳定版本再由 `dev` 合并到 `main`；
 - **开工先 pull，收工必 push**；
 - **改了云函数必须部署**：开发者工具中右键该云函数目录 → 「上传并部署：云端安装依赖」，并在群里说一声；
 - **测试数据**用自己名字开头（如 `测试A-排球`），不要删别人的测试数据；
@@ -56,7 +56,7 @@ yaliquankai/
 
 ## 部署清单（首次）
 
-1. 云开发控制台已建 5 个集合（见上）；
+1. 云开发控制台确认 6 个集合（见上），并将权限设为前端不可读写；
 2. 右键 `cloudfunctions/AuthManager` → 上传并部署；
 3. 编译通过后，「我的」页可用测试激活码验证绑定流程。
 
@@ -76,5 +76,6 @@ yaliquankai/
 
 ## 参考资料
 
-- 需求文档（用例模型 + 分析模型）：`../需求文档.md`
+- 需求文档（用例模型 + 分析模型）：`需求文档.md`
+- 代码层权威契约：`接口约定.md`
 - [微信云开发文档](https://developers.weixin.qq.com/miniprogram/dev/wxcloud/basis/getting-started.html)

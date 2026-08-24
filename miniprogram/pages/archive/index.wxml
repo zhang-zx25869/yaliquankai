@@ -1,5 +1,4 @@
-<!-- 赛后归档 页面骨架 -->
-<view class="container">
-  <text class="title">赛后归档</text>
-  <text class="desc">B8 赛后归档页（用例11/12）— C同学看板线</text>
-</view>
+<page-placeholder
+  title="赛后归档"
+  description="比分、赛果与媒体资料归档正在建设中"
+/>

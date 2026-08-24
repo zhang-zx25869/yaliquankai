@@ -1,3 +1,1 @@
-.container { padding: 40rpx; }
-.title { font-size: 40rpx; font-weight: bold; display: block; margin-bottom: 16rpx; }
-.desc { font-size: 26rpx; color: #999; }
+/* 页面骨架样式由全局 page-placeholder 组件提供。 */
