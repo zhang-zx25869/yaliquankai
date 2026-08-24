@@ -1,0 +1,5 @@
+<!-- 公共赛程 页面骨架 -->
+<view class="container">
+  <text class="title">公共赛程</text>
+  <text class="desc">B2 公共赛程日历（用例16/17）— A同学赛程线</text>
+</view>

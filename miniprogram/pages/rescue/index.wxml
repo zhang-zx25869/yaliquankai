@@ -1,0 +1,75 @@
+<!-- B7 救场接单页（用例9 GroupRescue）：红色警示 → 比赛信息 → 救场按钮 / 成功态 -->
+<view class="page">
+
+  <!-- 加载占位 -->
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中…</text>
+  </view>
+
+  <block wx:elif="{{!match}}">
+    <view class="loading"><text>无法获取比赛信息</text></view>
+  </block>
+
+  <block wx:else>
+
+    <!-- ── 救场成功态：接单完成后切换到这里 ── -->
+    <view wx:if="{{myStatus === 'confirmed'}}" class="success-card">
+      <view class="success-icon">🎉</view>
+      <text class="success-title">救场成功！</text>
+      <text class="success-desc">体育部不会忘记你做的一切……</text>
+    </view>
+
+    <block wx:else>
+
+      <!-- ── 红色求助警示条 ── -->
+      <view class="help-banner">
+        <text class="help-banner-title">⚠️ 本场跟场急需支援</text>
+        <text class="help-banner-reason">{{helpReason || '经理人无法到场，等待大群救场'}}</text>
+      </view>
+
+      <!-- ── 比赛信息卡片 ── -->
+      <view class="card">
+        <view class="status-bar" style="background: {{match.statusMeta.color}}">
+          <text class="status-bar-text">{{match.statusMeta.label}}</text>
+        </view>
+
+        <view class="vs-block">
+          <text class="vs">{{match.teamName}} vs {{match.rival}}</text>
+          <text class="sport">{{match.sport}}</text>
+        </view>
+
+        <view class="info-row">
+          <text class="info-label">时间</text>
+          <text class="info-value">{{match.timeText}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">地点</text>
+          <text class="info-value">{{match.location}}</text>
+        </view>
+        <view class="info-row">
+          <text class="info-label">后勤需求</text>
+          <text class="info-value">{{match.demandsText || '无'}}</text>
+        </view>
+        <view class="info-row" wx:if="{{match.confirmerName}}">
+          <text class="info-label">跟场人</text>
+          <text class="info-value info-confirmer">{{match.confirmerName}} 已确认</text>
+        </view>
+      </view>
+
+      <!-- 游客提示条（非 member 只读） -->
+      <view wx:if="{{role !== 'member'}}" class="guest-tip">
+        <text>当前为游客身份，仅部员可救场。请先绑定部员身份。</text>
+      </view>
+
+      <!-- ── 救场按钮：仅部员 + 求助态 可点 ── -->
+      <button
+        class="btn btn-danger"
+        wx:if="{{role === 'member'}}"
+        bindtap="onRescue"
+        disabled="{{match.cellStatus !== 'help'}}"
+      >我来救场</button>
+
+    </block>
+
+  </block>
+</view>

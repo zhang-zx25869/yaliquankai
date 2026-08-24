@@ -1,0 +1,5 @@
+<!-- 跟场看板 页面骨架 -->
+<view class="container">
+  <text class="title">跟场看板</text>
+  <text class="desc">B4 四色看板（用例13/14/15）— C同学看板线</text>
+</view>

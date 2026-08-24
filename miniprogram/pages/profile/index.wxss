@@ -1,0 +1,36 @@
+/* B5 我的页样式 */
+.container { padding: 40rpx; }
+
+.card {
+  background: #fff;
+  border-radius: 24rpx;
+  padding: 40rpx;
+  margin-bottom: 30rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+/* 身份卡片 */
+.avatar-wrap { margin-bottom: 20rpx; }
+.avatar { width: 120rpx; height: 120rpx; border-radius: 60rpx; }
+.info { display: flex; flex-direction: column; }
+.role { font-size: 44rpx; font-weight: bold; margin-bottom: 8rpx; }
+.desc { font-size: 26rpx; color: #999; }
+
+/* 绑定表单 */
+.card-title { font-size: 32rpx; font-weight: bold; margin-bottom: 12rpx; }
+.card-hint { font-size: 24rpx; color: #999; margin-bottom: 24rpx; line-height: 1.6; }
+.code-input {
+  border: 2rpx solid #e0e0e0;
+  border-radius: 12rpx;
+  padding: 20rpx 24rpx;
+  font-size: 28rpx;
+  margin-bottom: 24rpx;
+}
+.bind-btn {
+  background: #4C8BFE;
+  color: #fff;
+  font-size: 30rpx;
+  border-radius: 12rpx;
+}
+.bind-btn.disabled { opacity: 0.6; }

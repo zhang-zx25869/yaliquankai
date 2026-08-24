@@ -1,0 +1,38 @@
+<!-- B5 我的页：身份显示 + 激活码绑定 -->
+<view class="container">
+
+  <!-- 身份卡片 -->
+  <view class="card">
+    <view class="avatar-wrap">
+      <image class="avatar" src="/images/avatar.png" mode="aspectFill" />
+    </view>
+    <view class="info">
+      <text class="role">{{roleLabel}}</text>
+      <text class="desc">{{roleDesc}}</text>
+    </view>
+  </view>
+
+  <!-- 游客：激活码绑定入口（用例2） -->
+  <view class="card" wx:if="{{userInfo.role === 'guest'}}">
+    <text class="card-title">绑定身份</text>
+    <text class="card-hint">输入体育部分发的一次性激活码，解锁专属管理权限（队长 / 部员 / 运营者）</text>
+    <input
+      class="code-input"
+      placeholder="请输入激活码"
+      value="{{codeInput}}"
+      bindinput="onCodeInput"
+    />
+    <button
+      class="bind-btn {{binding ? 'disabled' : ''}}"
+      bindtap="onBind"
+      disabled="{{binding}}"
+    >{{binding ? "绑定中..." : "立即绑定"}}</button>
+  </view>
+
+  <!-- 已绑定：功能提示 -->
+  <view class="card" wx:else>
+    <text class="card-title">我的权限</text>
+    <text class="card-hint">身份已与微信永久绑定，后续使用无需重复验证</text>
+  </view>
+
+</view>

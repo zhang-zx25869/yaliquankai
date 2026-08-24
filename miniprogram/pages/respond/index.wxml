@@ -1,0 +1,97 @@
+<!-- B6 跟场响应页：信息区 → 统计区 → 态度区 → 求助区（四区） -->
+<view class="page">
+
+  <!-- 加载占位 -->
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中…</text>
+  </view>
+
+  <block wx:elif="{{!match}}">
+    <view class="loading"><text>无法获取比赛信息</text></view>
+  </block>
+
+  <block wx:else>
+
+    <!-- ── 区1：比赛信息 ── -->
+    <view class="card">
+      <!-- 顶部状态色条：颜色/文字来自 statusMeta（utils/status.js） -->
+      <view class="status-bar" style="background: {{match.statusMeta.color}}">
+        <text class="status-bar-text">{{match.statusMeta.label}}</text>
+      </view>
+
+      <view class="vs-block">
+        <text class="vs">{{match.teamName}} vs {{match.rival}}</text>
+        <text class="sport">{{match.sport}}</text>
+      </view>
+
+      <view class="info-row">
+        <text class="info-label">时间</text>
+        <text class="info-value">{{match.timeText}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">地点</text>
+        <text class="info-value">{{match.location}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">后勤需求</text>
+        <text class="info-value">{{match.demandsText || '无'}}</text>
+      </view>
+      <view class="info-row" wx:if="{{match.confirmerName}}">
+        <text class="info-label">跟场人</text>
+        <text class="info-value info-confirmer">{{match.confirmerName}} 已确认</text>
+      </view>
+    </view>
+
+    <!-- ── 区2：本队跟场统计（用例6） ── -->
+    <view class="card">
+      <view class="section-title">本队跟场统计</view>
+      <view class="stat-row" wx:for="{{stats}}" wx:key="nickname">
+        <text class="stat-name">{{item.nickname}}</text>
+        <text class="stat-count">{{item.count}} 次</text>
+      </view>
+      <view wx:if="{{!stats.length}}" class="stat-empty">暂无统计</view>
+    </view>
+
+    <!-- 游客提示条（非 member 只读） -->
+    <view wx:if="{{role !== 'member'}}" class="guest-tip">
+      <text>当前为游客身份，仅可查看比赛信息；绑定部员身份后方可响应跟场。</text>
+    </view>
+
+    <!-- ── 区3：态度区（用例7/10，按 myStatus + 角色 控显隐） ── -->
+    <view class="card" wx:if="{{role === 'member'}}">
+
+      <!-- 未表态：确认 / 没空 两个按钮 -->
+      <block wx:if="{{myStatus === 'none' && match.cellStatus === 'pending'}}">
+        <button class="btn btn-primary" bindtap="onConfirm">确认跟场</button>
+        <button class="btn btn-plain" bindtap="onDecline">没空</button>
+      </block>
+
+      <!-- 已确认：显示状态 + 取消我的跟场 -->
+      <block wx:elif="{{myStatus === 'confirmed'}}">
+        <view class="my-state">
+          <view class="my-dot" style="background: {{match.statusMeta.color}}" />
+          <text class="my-state-text">我已确认跟场</text>
+        </view>
+        <button class="btn btn-warn" bindtap="onCancelDuty">取消我的跟场</button>
+      </block>
+
+      <!-- 已没空：显示文案 + 反悔按钮（之后又有空了可改回确认跟场） -->
+      <block wx:elif="{{myStatus === 'declined'}}">
+        <view class="my-state">
+          <view class="my-dot" style="background: {{match.statusMeta.color}}" />
+          <text class="my-state-text">暂时没空，下次一定</text>
+        </view>
+        <button class="btn btn-primary" bindtap="onConfirm">有空，确认跟场</button>
+      </block>
+
+    </view>
+
+    <!-- ── 区4：求助区（用例8，仅红态且我是责任人） ── -->
+    <view class="card help-card" wx:if="{{match.cellStatus === 'help' && canHelp}}">
+      <view class="section-title help-title">⚠️ 需要帮助</view>
+      <text class="help-desc">本场跟场无人确认，请生成求助卡片并转发至体育部大群，同时私聊部长报备。</text>
+      <button class="btn btn-danger" open-type="share">生成求助卡片并转发</button>
+    </view>
+
+  </block>
+</view>
