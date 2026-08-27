@@ -52,40 +52,76 @@ async function autoLogin(openid) {
 async function bindIdentity(openid, { code }) {
   if (!code) return fail(400, "请输入激活码");
 
-  // 1. 查激活码：存在、未使用、未过期
+  // 1. 事务只支持按文档 ID 操作，先定位激活码文档；事务内会重新校验最新状态。
   const codeRes = await db
     .collection("ActivationCodeCollection")
-    .where({ code, used: false })
+    .where({ code })
+    .limit(2)
     .get();
   if (codeRes.data.length === 0) return fail(401, "激活码无效或已被使用");
-  const codeDoc = codeRes.data[0];
-  if (codeDoc.expireAt && codeDoc.expireAt < Date.now()) {
-    return fail(401, "激活码已过期");
+  if (codeRes.data.length > 1) {
+    console.error("[AuthManager] duplicate activation code", code);
+    return fail(500, "激活码数据异常，请联系管理员");
   }
+  const codeDoc = codeRes.data[0];
 
   // 2. 该 openid 是否已绑定过身份（不允许重复绑定）
   const userRes = await db.collection("UserCollection").where({ openid }).get();
   if (userRes.data.length > 0) return fail(403, "该微信已绑定身份，无需重复绑定");
 
-  // 3. 建立 openid ↔ 角色 永久绑定
-  await db.collection("UserCollection").add({
-    data: {
-      openid,
-      role: codeDoc.role,        // captain / member / admin
-      nickname: codeDoc.nickname || "", // 激活码可预置昵称（如队长姓名）
-      teamId: codeDoc.teamId || null,   // 队长/部员关联的代表队
-      bindAt: Date.now(),
-    },
-  });
+  try {
+    // 3. 创建用户与作废激活码必须原子完成；事务冲突由 SDK 自动重试。
+    return await db.runTransaction(async (transaction) => {
+      const freshCodeRes = await transaction
+        .collection("ActivationCodeCollection")
+        .doc(codeDoc._id)
+        .get();
+      const freshCode = Array.isArray(freshCodeRes.data)
+        ? freshCodeRes.data[0]
+        : freshCodeRes.data;
 
-  // 4. 作废激活码（一次性）
-  await db.collection("ActivationCodeCollection").doc(codeDoc._id).update({
-    data: { used: true, usedBy: openid, usedAt: Date.now() },
-  });
+      if (!freshCode || freshCode.code !== code || freshCode.used) {
+        return fail(401, "激活码无效或已被使用");
+      }
+      if (freshCode.expireAt && freshCode.expireAt < Date.now()) {
+        return fail(401, "激活码已过期");
+      }
 
-  return ok({
-    role: codeDoc.role,
-    nickname: codeDoc.nickname || "",
-    teamId: codeDoc.teamId || null,
-  });
+      const now = Date.now();
+      const nickname = freshCode.nickname || "";
+      const teamId = freshCode.teamId || null;
+
+      // 使用 openid 作为确定性文档 ID，同时充当同一用户并发绑定的唯一锁。
+      await transaction.collection("UserCollection").add({
+        data: {
+          _id: openid,
+          openid,
+          role: freshCode.role, // captain / member / admin
+          nickname,
+          teamId, // 队长/部员关联的代表队；运营者为 null
+          bindAt: now,
+        },
+      });
+
+      await transaction.collection("ActivationCodeCollection").doc(codeDoc._id).update({
+        data: { used: true, usedBy: openid, usedAt: now },
+      });
+
+      return ok({ role: freshCode.role, nickname, teamId });
+    });
+  } catch (e) {
+    // 并发请求可能在事务重试期间由另一请求先完成，转换成稳定的业务错误码。
+    const [latestUserRes, latestCodeRes] = await Promise.all([
+      db.collection("UserCollection").where({ openid }).get(),
+      db.collection("ActivationCodeCollection").where({ _id: codeDoc._id }).limit(1).get(),
+    ]);
+    if (latestUserRes.data.length > 0) {
+      return fail(403, "该微信已绑定身份，无需重复绑定");
+    }
+    const latestCode = latestCodeRes.data[0];
+    if (!latestCode || latestCode.used) {
+      return fail(401, "激活码无效或已被使用");
+    }
+    throw e;
+  }
 }
