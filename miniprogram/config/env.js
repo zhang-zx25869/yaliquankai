@@ -13,7 +13,7 @@ const getEnvVersion = () => {
     const accountInfo = wx.getAccountInfoSync();
     const version = accountInfo.miniProgram && accountInfo.miniProgram.envVersion;
     return SUPPORTED_VERSIONS.includes(version) ? version : "develop";
-  } catch (e) {
+  } catch (_e) {
     return "develop";
   }
 };

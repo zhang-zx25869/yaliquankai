@@ -18,7 +18,7 @@ const db = cloud.database();                      //数据库
 const _ = db.command;                             //查询指令集
 
 // 统一返回格式：{ code: 0, data } 成功；{ code: 非0, message } 失败
-const ok = (data) => ({ code: 0, data });
+const _ok = (data) => ({ code: 0, data });
 const fail = (code, message) => ({ code, message });
 /*等价于传统写法：
 function ok(data) {
@@ -72,62 +72,62 @@ exports.main = async (event) => {
 // event: { matchId }
 // 返回 data: { match, myStatus: 'none'|'confirmed'|'declined',
 //              stats: [{nickname, count}], remainingCount, canHelp }
-async function getRespondPage(openid, event) {
+async function getRespondPage(_openid, _event) {
   return fail(501, "开发中");
 }
 
 // —— 用例9：救场页聚合查询（比赛信息 + 我的接单状态）——
 // event: { matchId }
 // 返回 data: { match, myStatus: 'none'|'confirmed' }
-async function getRescuePage(openid, event) {
+async function getRescuePage(_openid, _event) {
   return fail(501, "开发中");
 }
 
 // —— 用例6：本队经理人历史跟场次数统计 ——
 // 无业务参数；所属队伍由 openid 绑定身份取得，禁止信任前端 teamId
 // 返回 data: { stats: [{ nickname, count }] }  // count 只计 confirm/rescue/assign
-async function getTeamStats(openid) {
+async function getTeamStats(_openid) {
   return fail(501, "开发中");
 }
 
 // —— 用例7：确认跟场 ——
 // event: { matchId }
 // 返回 data: { cellStatus: 'confirmed' }  // 写 DutyRecord(confirm) + 置绿 + 记录confirmer
-async function confirmDuty(openid, event) {
+async function confirmDuty(_openid, _event) {
   return fail(501, "开发中");
 }
 
 // —— 用例7：没空（多人表态分流：单人队直接红；多人队最后一人没空才红）——
 // event: { matchId }
 // 返回 data: { cellStatus, canHelp, remainingCount }
-async function declineDuty(openid, event) {
+async function declineDuty(_openid, _event) {
   return fail(501, "开发中");
 }
 
 // —— 用例8：生成求助卡片（纯读不落库，仅 cellStatus=help 可调）——
 // event: { matchId }
 // 返回 data: { title, path }  // path = /pages/rescue/index?matchId=xxx
-async function generateHelpCard(openid, event) {
+async function generateHelpCard(_openid, _event) {
   return fail(501, "开发中");
 }
 
 // —— 用例9：大群救场接单（仅红色可接，红 → 绿，跟场人更新为救场者）——
 // event: { matchId }
 // 返回 data: { cellStatus: 'confirmed' }
-async function rescueDuty(openid, event) {
+async function rescueDuty(_openid, _event) {
   return fail(501, "开发中");
 }
 
 // —— 用例10：取消我的跟场 ——
 // 取消等同本人最新表态变为没空：写 DutyRecord(decline) + 清 confirmer，随后统一重算
 // 返回 data: { cellStatus, canHelp }
-async function cancelMyDuty(openid, event) {
+async function cancelMyDuty(_openid, _event) {
   return fail(501, "开发中");
 }
 
 // —— 用例10a：我的未完结跟场列表 ——
 // 无业务参数；openid 由云函数上下文自动注入
 // 返回 data: { list: [MatchDTO] }  // 仅 confirmed/settle，按 matchTime 正序，排除已归档
-async function getMyDuties(openid) {
+async function getMyDuties(_openid) {
   return fail(501, "开发中");
 }

@@ -79,7 +79,7 @@ Page({
         canHelp: !!data.canHelp,
       });
       this.syncShareAvailability(data.match && data.match.cellStatus);
-    } catch (e) {
+    } catch (_e) {
       // 错误提示 call 已统一 toast
     } finally {
       this.setData({ loading: false });
@@ -154,7 +154,7 @@ Page({
     try {
       await call("DutyManager", { action: "confirmDuty", matchId: this.matchId });
       this.fetchData(this.matchId); // 重新拉取刷新
-    } catch (e) { /* call 已统一 toast */ }
+    } catch (_e) { /* call 已统一 toast */ }
   },
 
   // —— 用例7：没空（mock 演示分流：还有人未表态保持黄；否则拉红解锁求助）——
@@ -196,9 +196,9 @@ Page({
       return;
     }
     try {
-      const data = await call("DutyManager", { action: "declineDuty", matchId: this.matchId });
+      await call("DutyManager", { action: "declineDuty", matchId: this.matchId });
       this.fetchData(this.matchId);
-    } catch (e) { /* call 已统一 toast */ }
+    } catch (_e) { /* call 已统一 toast */ }
   },
 
   // —— 用例10：取消我的跟场（<48h 弹安全锁强提醒）——
@@ -237,7 +237,7 @@ Page({
     try {
       await call("DutyManager", { action: "cancelMyDuty", matchId: this.matchId});
       this.fetchData(this.matchId);
-    } catch (e) { /* call 已统一 toast */ }
+    } catch (_e) { /* call 已统一 toast */ }
   },
 
   // 分享随状态变化：红态求助卡片，黄/绿态赛程卡片，完结状态不展示分享入口。

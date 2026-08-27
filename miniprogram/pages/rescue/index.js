@@ -63,7 +63,7 @@ Page({
         match: this.formatMatch(data.match),
         myStatus: data.myStatus || "none",
       });
-    } catch (e) {
+    } catch (_e) {
       // 错误提示 call 已统一 toast
     } finally {
       this.setData({ loading: false });
@@ -128,7 +128,7 @@ Page({
     try {
       await call("DutyManager", { action: "rescueDuty", matchId: this.matchId });
       this.fetchData(this.matchId); // 重新拉取刷新
-    } catch (e) { /* call 已统一 toast */ }
+    } catch (_e) { /* call 已统一 toast */ }
   },
 
 

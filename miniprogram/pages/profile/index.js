@@ -50,7 +50,7 @@ Page({
         showCancel: false,
       });
       this.refreshUser();
-    } catch (e) {
+    } catch (_e) {
       // 错误提示已由 call 统一 toast
     } finally {
       this.setData({ binding: false });
