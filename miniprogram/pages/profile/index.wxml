@@ -13,7 +13,7 @@
   </view>
 
   <!-- 游客：激活码绑定入口（用例2） -->
-  <view class="card" wx:if="{{userInfo.role === 'guest'}}">
+  <view class="card" wx:if="{{userInfo.role === roleGuest}}">
     <text class="card-title">绑定身份</text>
     <text class="card-hint">输入体育部分发的一次性激活码，解锁专属管理权限（队长 / 部员 / 运营者）</text>
     <input

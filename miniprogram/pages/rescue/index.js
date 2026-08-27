@@ -1,7 +1,7 @@
 // pages/rescue/index.js
 // B7 救场接单页（用例9 GroupRescue）
-// 部员点击大群里的【求助卡片】直达本页 → 看比赛信息 + 求助原因 → 点「我来救场」接单 → 单元格红变绿
-// 只能通过求助卡片/看板进入；游客无权限（role 校验）；仅 help 状态可救场
+// 部员点击大群里的【求助卡片】直达本页 → 看比赛信息 → 点「我来救场」接单 → 单元格红变绿
+// 通过求助卡片进入；游客无权限（role 校验）；仅 help 状态可救场
 const { call, getUser, waitForUser } = require("../../utils/call");
 const { CELL_STATUS, STATUS_META, ROLE } = require("../../utils/status");
 const { MOCK_MATCHES } = require("../../utils/mock"); // mock 数据统一抽到 utils/mock.js 共用
@@ -13,9 +13,9 @@ Page({
   data: {
     role: ROLE.GUEST,
     roleMember: ROLE.MEMBER,
+    cellStatusHelp: CELL_STATUS.HELP,
     match: null,           // 公共对象（格式化后的 match，含 timeText/demandsText/statusMeta）
     myStatus: "none",      // none | confirmed（救场成功后置 confirmed，用于渲染成功态）
-    helpReason: "",        // 求助原因（mock/云端返回，展示在红色警示条）
     loading: true,
   },
   // 从求助卡片进入：options.matchId 即要救场的比赛
@@ -27,12 +27,12 @@ Page({
       return;
     }
     this.matchId = matchId;
-    this.fetchData(matchId);
   },
 
   // 每次页面显示刷新身份（静默登录可能比 onLoad 晚，照 profile 页模式兜底）
   onShow() {
     this.refreshUser();
+    if (this.matchId) this.fetchData(this.matchId);
   },
 
   // 身份：从全局缓存拿 role（处理启动时静默登录未完成的竞态）
@@ -52,18 +52,16 @@ Page({
       this.setData({
         match: this.formatMatch(raw),
         myStatus: "none",
-        helpReason: raw.helpReason || "",
       });
       this.setData({ loading: false });
       return;
     }
-    // —— 真实分支：契约 getRescuePage，返回 { match, helpReason }（阶段4 接通后启用）——
+    // —— 真实分支：契约 getRescuePage，返回 { match, myStatus }（阶段4 接通后启用）——
     try {
       const data = await call("DutyManager", { action: "getRescuePage", matchId });
       this.setData({
         match: this.formatMatch(data.match),
         myStatus: data.myStatus || "none",
-        helpReason: data.helpReason || "",
       });
     } catch (e) {
       // 错误提示 call 已统一 toast
@@ -77,18 +75,11 @@ Page({
     const meta = STATUS_META[raw.cellStatus] || {};
     return {
       ...raw,
-      timeText: raw.timeText || this.formatTime(raw.matchTime),
-      demandsText: raw.demandsText || (raw.demands || []).join("、"),
+      timeText: raw.timeText || "",
+      demandsText: raw.demandsText || "",
       confirmerName: raw.confirmerNickname || "",
       statusMeta: meta, // { color, label, desc } 供 WXML 渲染色条/文案
     };
-  },
-
-  formatTime(ts) {
-    if (!ts) return "";
-    const d = new Date(ts);
-    const pad = (n) => (n < 10 ? "0" + n : "" + n);
-    return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   },
 
   

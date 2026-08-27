@@ -37,7 +37,7 @@ yaliquankai/
 - **开发云环境 ID**：`yaliquankai-d2g2kt52247d144a8`（配置于 `miniprogram/config/env.js`；体验版和正式版尚未配置）
 - **数据库集合**（权限均为自定义安全规则 `read:false, write:false`，只走云函数）：
   `UserCollection` / `MatchCollection` / `DutyRecordCollection` / `ArchiveCollection` / `ActivationCodeCollection` / `TeamCollection`
-- 原 5 个集合已存在；`TeamCollection` 是本次基线新增契约，首次联调前需在控制台创建。
+- 6 个集合均已存在；`TeamCollection` 及所需索引已完成基线确认。
 
 ## 开发环境搭建（每位协作者一次）
 

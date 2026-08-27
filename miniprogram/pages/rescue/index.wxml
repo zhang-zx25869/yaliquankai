@@ -24,7 +24,7 @@
       <!-- ── 红色求助警示条 ── -->
       <view class="help-banner">
         <text class="help-banner-title">⚠️ 本场跟场急需支援</text>
-        <text class="help-banner-reason">{{helpReason || '经理人无法到场，等待大群救场'}}</text>
+        <text class="help-banner-reason">本队经理人全员没空，等待大群救场</text>
       </view>
 
       <!-- ── 比赛信息卡片 ── -->
@@ -57,7 +57,7 @@
       </view>
 
       <!-- 游客提示条（非 member 只读） -->
-      <view wx:if="{{role !== 'member'}}" class="guest-tip">
+      <view wx:if="{{role !== roleMember}}" class="guest-tip">
         <text>当前为游客身份，仅部员可救场。请先绑定部员身份。</text>
       </view>
 
@@ -66,7 +66,7 @@
         class="btn btn-danger"
       wx:if="{{role === roleMember}}"
         bindtap="onRescue"
-        disabled="{{match.cellStatus !== 'help'}}"
+        disabled="{{match.cellStatus !== cellStatusHelp}}"
       >我来救场</button>
 
     </block>

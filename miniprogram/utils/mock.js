@@ -40,8 +40,16 @@ const MOCK_MATCHES = {
     location: "南区球场",
     demands: ["饮用水", "记分", "摄影"],
     cellStatus: CELL_STATUS.HELP,
-    helpReason: "本队经理人全员没空，等待大群救场",
   },
 };
+
+// Mock 层负责模拟云端已经格式化好的 MatchDTO；业务页面不重复格式化时间。
+Object.keys(MOCK_MATCHES).forEach((key) => {
+  const match = MOCK_MATCHES[key];
+  const date = new Date(match.matchTime);
+  const pad = (value) => (value < 10 ? `0${value}` : `${value}`);
+  match.timeText = `${date.getMonth() + 1}月${date.getDate()}日 ${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  match.demandsText = (match.demands || []).join("、");
+});
 
 module.exports = { MOCK_MATCHES };

@@ -12,12 +12,13 @@ Page({
   data: {
     role: ROLE.GUEST,
     roleMember: ROLE.MEMBER,
+    cellStatusPending: CELL_STATUS.PENDING,
     cellStatusHelp: CELL_STATUS.HELP,
     match: null,           // 公共对象（格式化后的 match，含 timeText/demandsText/statusMeta）
     myStatus: "none",      // none | confirmed | declined
     stats: [],             // [{ nickname, count }] 本队跟场统计
     remainingCount: 0,     // 本队未表态人数（含操作者）
-    canHelp: false,        // 我是否为拉红责任人 → 决定求助按钮显隐
+    canHelp: false,        // 红态下我是否为本队经理人 → 决定求助按钮显隐
     loading: true,
   },
 
@@ -30,12 +31,12 @@ Page({
       return;
     }
     this.matchId = matchId;
-    this.fetchData(matchId);
   },
 
   // 每次页面显示刷新身份（静默登录可能比 onLoad 晚，照 profile 页模式兜底）
   onShow() {
     this.refreshUser();
+    if (this.matchId) this.fetchData(this.matchId);
   },
 
   // 身份：从全局缓存拿 role（处理启动时静默登录未完成的竞态）
@@ -61,8 +62,9 @@ Page({
           { nickname: "经理人乙", count: 2 },
         ],
         remainingCount: raw.remainingCount || 1,
-        canHelp: raw.cellStatus === CELL_STATUS.HELP, // 求助场默认我是责任人，方便测求助按钮
+        canHelp: raw.cellStatus === CELL_STATUS.HELP, // 求助场默认模拟本队经理人
       });
+      this.syncShareAvailability(raw.cellStatus);
       this.setData({ loading: false });
       return;
     }
@@ -76,6 +78,7 @@ Page({
         remainingCount: data.remainingCount || 0,
         canHelp: !!data.canHelp,
       });
+      this.syncShareAvailability(data.match && data.match.cellStatus);
     } catch (e) {
       // 错误提示 call 已统一 toast
     } finally {
@@ -89,19 +92,11 @@ Page({
     const meta = STATUS_META[raw.cellStatus] || {};
     return {
       ...raw,
-      timeText: raw.timeText || this.formatTime(raw.matchTime),
-      demandsText: raw.demandsText || (raw.demands || []).join("、"),
+      timeText: raw.timeText || "",
+      demandsText: raw.demandsText || "",
       confirmerName: raw.confirmerNickname || "",
       statusMeta: meta, // { color, label, desc } 供 WXML 渲染色条/文案
     };
-  },
-
-  // 时间戳 → 中文时间串（如 "8月26日 15:00"）
-  formatTime(ts) {
-    if (!ts) return "";
-    const d = new Date(ts);
-    const pad = (n) => (n < 10 ? "0" + n : "" + n);
-    return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
   },
 
   // 统一状态更新：改 cellStatus 并同步刷新顶部色条（statusMeta），保证两者永远一致
@@ -111,7 +106,18 @@ Page({
       "match.cellStatus": status,
       "match.statusMeta": meta,
     });
+    this.syncShareAvailability(status);
     return meta;
+  },
+
+  // 黄/绿分享赛程卡片，红分享求助卡片；已完结状态隐藏分享入口。
+  syncShareAvailability(status) {
+    const shareable = [CELL_STATUS.PENDING, CELL_STATUS.CONFIRMED, CELL_STATUS.HELP].includes(status);
+    if (shareable) {
+      wx.showShareMenu({ menus: ["shareAppMessage"] });
+    } else {
+      wx.hideShareMenu({ menus: ["shareAppMessage"] });
+    }
   },
 
 
@@ -121,6 +127,10 @@ Page({
   async onConfirm() {
     const m = this.data.match;
     if (!m) return;
+    if (![CELL_STATUS.PENDING, CELL_STATUS.HELP, CELL_STATUS.CONFIRMED].includes(m.cellStatus)) {
+      wx.showToast({ title: "当前状态无法确认跟场", icon: "none" });
+      return;
+    }
 
     // 二次确认
     const { confirm } = await wx.showModal({
@@ -151,6 +161,10 @@ Page({
   async onDecline() {
     const m = this.data.match;
     if (!m) return;
+    if (m.cellStatus !== CELL_STATUS.PENDING) {
+      wx.showToast({ title: "仅待确认状态可以选择没空", icon: "none" });
+      return;
+    }
 
     const { confirm } = await wx.showModal({
       title: "暂时没空",
@@ -206,13 +220,18 @@ Page({
     if (!first.confirm) return;
 
     if (USE_MOCK) {
-      // mock：回退黄色待确认，释放名额
-      this.updateCellStatus(CELL_STATUS.PENDING);
+      // mock：取消等同本人没空；临期拉红，否则回黄。
+      const nextStatus = within48h ? CELL_STATUS.HELP : CELL_STATUS.PENDING;
+      this.updateCellStatus(nextStatus);
       this.setData({
         "match.confirmerName": "",
-        myStatus: "none",
+        myStatus: "declined",
+        canHelp: nextStatus === CELL_STATUS.HELP,
       });
-      wx.showToast({ title: "已取消，名额已释放", icon: "success" });
+      wx.showToast({
+        title: nextStatus === CELL_STATUS.HELP ? "已取消，看板已拉红" : "已取消，名额已释放",
+        icon: nextStatus === CELL_STATUS.HELP ? "none" : "success",
+      });
       return;
     }
     try {
@@ -221,14 +240,21 @@ Page({
     } catch (e) { /* call 已统一 toast */ }
   },
 
-  // —— 用例8：分享求助卡片（open-type=share 自动触发，返回标题与直达路径）——
+  // 分享随状态变化：红态求助卡片，黄/绿态赛程卡片，完结状态不展示分享入口。
   onShareAppMessage() {
     const m = this.data.match;
+    const isHelp = m && m.cellStatus === CELL_STATUS.HELP;
     return {
       title: m
-        ? `【跟场求助】${m.teamName} vs ${m.rival} ${m.timeText}，希望有空的同学补位！`
-        : "雅力全开 · 跟场求助",
-      path: m ? `/pages/rescue/index?matchId=${m._id}` : "/pages/index/index",
+        ? isHelp
+          ? `【跟场求助】${m.teamName} vs ${m.rival} ${m.timeText}，希望有空的同学补位！`
+          : `【跟场确认】${m.teamName} vs ${m.rival} ${m.timeText}`
+        : "雅力全开 · 赛事跟场",
+      path: m
+        ? isHelp
+          ? `/pages/rescue/index?matchId=${m._id}`
+          : `/pages/respond/index?matchId=${m._id}`
+        : "/pages/index/index",
     };
   },
 });

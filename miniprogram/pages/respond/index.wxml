@@ -53,7 +53,7 @@
     </view>
 
     <!-- 游客提示条（非 member 只读） -->
-    <view wx:if="{{role !== 'member'}}" class="guest-tip">
+    <view wx:if="{{role !== roleMember}}" class="guest-tip">
       <text>当前为游客身份，仅可查看比赛信息；绑定部员身份后方可响应跟场。</text>
     </view>
 
@@ -61,9 +61,9 @@
   <view class="card" wx:if="{{role === roleMember}}">
 
       <!-- 未表态：确认 / 没空 两个按钮 -->
-      <block wx:if="{{myStatus === 'none' && match.cellStatus === 'pending'}}">
+      <block wx:if="{{myStatus === 'none' && (match.cellStatus === cellStatusPending || match.cellStatus === cellStatusHelp)}}">
         <button class="btn btn-primary" bindtap="onConfirm">确认跟场</button>
-        <button class="btn btn-plain" bindtap="onDecline">没空</button>
+        <button wx:if="{{match.cellStatus === cellStatusPending}}" class="btn btn-plain" bindtap="onDecline">没空</button>
       </block>
 
       <!-- 已确认：显示状态 + 取消我的跟场 -->
@@ -86,7 +86,7 @@
 
     </view>
 
-    <!-- ── 区4：求助区（用例8，仅红态且我是责任人） ── -->
+    <!-- ── 区4：求助区（用例8，红态且当前用户为本队经理人） ── -->
   <view class="card help-card" wx:if="{{match.cellStatus === cellStatusHelp && canHelp}}">
       <view class="section-title help-title">⚠️ 需要帮助</view>
       <text class="help-desc">本场跟场无人确认，请生成求助卡片并转发至体育部大群，同时私聊部长报备。</text>

@@ -6,6 +6,7 @@ const { ROLE, ROLE_META } = require("../../utils/status");
 Page({
   data: {
     userInfo: { role: ROLE.GUEST },
+    roleGuest: ROLE.GUEST,
     roleLabel: "游客",
     roleDesc: "仅可浏览公开信息",
     codeInput: "",   // 激活码输入框

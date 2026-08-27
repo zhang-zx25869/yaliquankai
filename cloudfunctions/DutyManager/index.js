@@ -3,13 +3,14 @@
 // ── 契约空壳：所有 action 均返回 501 开发中，业务逻辑待实装 ──
 //
 // action: getRespondPage   —— 响应页聚合数据（比赛信息 + 我的表态 + 本队统计）
-// action: getRescuePage    —— 救场页聚合数据（比赛信息 + 求助原因）
+// action: getRescuePage    —— 救场页聚合数据（比赛信息 + 我的接单状态）
 // action: getTeamStats     —— 本队经理人历史跟场次数统计
 // action: confirmDuty      —— 确认跟场：写留痕 + 单元格置绿
 // action: declineDuty      —— 没空：单经理人置红 / 多经理人全员没空才置红
 // action: generateHelpCard —— 生成求助卡片（仅红色状态可调）
 // action: rescueDuty       —— 大群救场接单：红色 → 绿色
-// action: cancelMyDuty     —— 取消我的跟场：释放名额回黄色（<48h 安全锁）
+// action: cancelMyDuty     —— 取消我的跟场：等同本人没空，统一重算状态
+// action: getMyDuties      —— 我的未完结跟场列表
 
 const cloud = require("wx-server-sdk");           //引入官方SDK，封装微信云函数能力的工具箱
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });   //动态识别，连接云环境
@@ -41,7 +42,7 @@ exports.main = async (event) => {
       case "getRescuePage":
         return await getRescuePage(OPENID, event);
       case "getTeamStats":
-        return await getTeamStats(OPENID, event);
+        return await getTeamStats(OPENID);
       case "confirmDuty":
         return await confirmDuty(OPENID, event);
       case "declineDuty":
@@ -52,6 +53,8 @@ exports.main = async (event) => {
         return await rescueDuty(OPENID, event);
       case "cancelMyDuty":
         return await cancelMyDuty(OPENID, event);
+      case "getMyDuties":
+        return await getMyDuties(OPENID);
       default:
         return fail(400, "未知操作");
     }
@@ -73,17 +76,17 @@ async function getRespondPage(openid, event) {
   return fail(501, "开发中");
 }
 
-// —— 用例9：救场页聚合查询（比赛信息 + 求助原因）——
+// —— 用例9：救场页聚合查询（比赛信息 + 我的接单状态）——
 // event: { matchId }
-// 返回 data: { match, helpReason }
+// 返回 data: { match, myStatus: 'none'|'confirmed' }
 async function getRescuePage(openid, event) {
   return fail(501, "开发中");
 }
 
 // —— 用例6：本队经理人历史跟场次数统计 ——
-// event: { teamId }
+// 无业务参数；所属队伍由 openid 绑定身份取得，禁止信任前端 teamId
 // 返回 data: { stats: [{ nickname, count }] }  // count 只计 confirm/rescue/assign
-async function getTeamStats(openid, event) {
+async function getTeamStats(openid) {
   return fail(501, "开发中");
 }
 
@@ -103,7 +106,7 @@ async function declineDuty(openid, event) {
 
 // —— 用例8：生成求助卡片（纯读不落库，仅 cellStatus=help 可调）——
 // event: { matchId }
-// 返回 data: { title, path, desc }  // path = /pages/rescue/index?matchId=xxx
+// 返回 data: { title, path }  // path = /pages/rescue/index?matchId=xxx
 async function generateHelpCard(openid, event) {
   return fail(501, "开发中");
 }
@@ -116,8 +119,15 @@ async function rescueDuty(openid, event) {
 }
 
 // —— 用例10：取消我的跟场 ——
-// 正常取消：写 DutyRecord(cancel) + 清 confirmer + 回 pending
-// 返回 data: { cellStatus: 'pending' }
+// 取消等同本人最新表态变为没空：写 DutyRecord(decline) + 清 confirmer，随后统一重算
+// 返回 data: { cellStatus, canHelp }
 async function cancelMyDuty(openid, event) {
+  return fail(501, "开发中");
+}
+
+// —— 用例10a：我的未完结跟场列表 ——
+// 无业务参数；openid 由云函数上下文自动注入
+// 返回 data: { list: [MatchDTO] }  // 仅 confirmed/settle，按 matchTime 正序，排除已归档
+async function getMyDuties(openid) {
   return fail(501, "开发中");
 }
