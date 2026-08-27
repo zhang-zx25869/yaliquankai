@@ -30,7 +30,7 @@ yaliquankai/
 └── project.config.json
 ```
 
-待创建的业务云函数：`ScheduleManager`、`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
+待创建的业务云函数：`ScheduleManager`、`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。A 线负责 `ScheduleManager` 以及 `CalendarManager.getCalendar/getMatchDetail` 首版，媒体读取 `getMediaLink` 留到归档收尾阶段。
 
 ## 环境信息
 
@@ -71,6 +71,14 @@ npm run check  # 依次执行 lint + test，提交前推荐运行
 ```
 
 GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 自动执行 `npm ci` 和 `npm run check`。CI 通过不能替代微信开发者工具编译和真机测试；涉及云函数的改动仍需部署到开发环境后完成联调。
+
+## A 线开工前确认
+
+1. 从最新 `dev` 创建 `feat/schedule`，确认本机 `node` / `npm` 可用且 `npm run check` 通过；
+2. 准备一个绑定到有效 `TeamCollection` 记录的队长测试身份，并确认自己拥有开发环境云函数部署权限；
+3. 为 `MatchCollection.createRequestId` 建唯一索引，用于防止新建赛程网络重试产生重复记录；
+4. 按 `接口约定.md` 8.1 实现 TBD、时间校验、revision/version、requestId 幂等、状态守卫和分享预加载规则；
+5. A 线完成 `CalendarManager.getCalendar/getMatchDetail` 后再验收首页，不以长期 mock 代替公开读取接口。
 
 ## 部署清单（首次）
 
