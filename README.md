@@ -26,11 +26,12 @@ yaliquankai/
 │       └── status.js         # D2 状态机常量（黄/绿/红/橙/灰 + 角色）
 ├── cloudfunctions/           # 云函数（控制类）
 │   ├── AuthManager/          # C1 身份认证【已完成】
+│   ├── ScheduleManager/      # C2 赛程管理【契约骨架，待实装】
 │   └── DutyManager/          # C3 跟场任务【契约空壳，待实装】
 └── project.config.json
 ```
 
-待创建的业务云函数：`ScheduleManager`、`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。A 线负责 `ScheduleManager` 以及 `CalendarManager.getCalendar/getMatchDetail` 首版，媒体读取 `getMediaLink` 留到归档收尾阶段。
+待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。`ScheduleManager` 已完成 Day 2 契约骨架，A 线后续实装其业务 action，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。
 
 ## 环境信息
 
