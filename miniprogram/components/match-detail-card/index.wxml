@@ -1,0 +1,72 @@
+<!-- B10 共用比赛详情卡片：三处复用，按角色渲染按钮 -->
+<view class="mdc {{expanded ? 'mdc-open' : ''}}">
+
+  <!-- 摘要行（常显）：状态点 + 对阵 + 时间 -->
+  <view class="mdc-head" bindtap="onToggle">
+    <view class="mdc-dot" style="background: {{statusMeta.color || '#ccc'}}" />
+    <view class="mdc-summary">
+      <text class="mdc-vs">{{match.teamName}} vs {{match.rival}}</text>
+      <text class="mdc-time">{{match.timeText || ''}}</text>
+    </view>
+    <text class="mdc-status" style="color: {{statusMeta.color || '#999'}}">{{statusMeta.label || ''}}</text>
+  </view>
+
+  <!-- 展开区：下滑展开（用例17） -->
+  <view class="mdc-body" wx:if="{{expanded}}">
+
+    <view class="mdc-row">
+      <text class="mdc-label">项目</text>
+      <text class="mdc-value">{{match.sport}}</text>
+    </view>
+    <view class="mdc-row">
+      <text class="mdc-label">时间</text>
+      <text class="mdc-value">{{match.timeText}}</text>
+    </view>
+    <view class="mdc-row">
+      <text class="mdc-label">地点</text>
+      <text class="mdc-value">{{match.location}}</text>
+    </view>
+    <view class="mdc-row">
+      <text class="mdc-label">后勤需求</text>
+      <text class="mdc-value">{{match.demandsText || '无'}}</text>
+    </view>
+
+    <!-- 跟场状态详情：如「部员XXX已确认」（看板点开可见，用例13） -->
+    <view class="mdc-row" wx:if="{{match.confirmerName}}">
+      <text class="mdc-label">跟场人</text>
+      <text class="mdc-value mdc-confirmer">{{match.confirmerName}} 已确认</text>
+    </view>
+
+    <!-- 已归档：比分与胜负（用例11/17） -->
+    <block wx:if="{{match.score}}">
+      <view class="mdc-row">
+        <text class="mdc-label">比分</text>
+        <text class="mdc-value mdc-score">{{match.score}}</text>
+      </view>
+      <view class="mdc-row">
+        <text class="mdc-label">结果</text>
+        <text class="mdc-value">{{match.result}}</text>
+      </view>
+      <!-- 媒体：清华云盘链接（用例12/18） -->
+      <view class="mdc-row" wx:if="{{match.mediaLink}}">
+        <text class="mdc-label">媒体</text>
+        <text class="mdc-value mdc-link" bindtap="onCopyLink">📎 现场照片视频（点击复制云盘链接）</text>
+      </view>
+    </block>
+
+    <!-- 状态说明 -->
+    <view class="mdc-status-desc" wx:if="{{statusMeta.desc}}">{{statusMeta.desc}}</view>
+
+    <!-- 操作按钮区：按角色渲染 -->
+    <view class="mdc-actions" wx:if="{{showActions}}">
+      <!-- 运营者专属（用例14/15） -->
+      <block wx:if="{{role === roleAdmin && match.cellStatus === cellStatusHelp}}">
+        <button class="mdc-btn mdc-btn-danger" size="mini" catchtap="onForceCancel">强制取消跟场</button>
+        <button class="mdc-btn mdc-btn-warn" size="mini" catchtap="onManualReset">手动修改跟场状态</button>
+      </block>
+      <!-- 已确认部员：取消我的跟场（用例10，按钮显示由页面根据确认状态控制 showActions） -->
+      <button class="mdc-btn mdc-btn-plain" size="mini" wx:if="{{role === roleMember && match.myConfirmed && match.cellStatus === cellStatusConfirmed}}" catchtap="onCancelDuty">取消我的跟场</button>
+    </view>
+
+  </view>
+</view>

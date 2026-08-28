@@ -1,0 +1,9 @@
+{
+  "name": "DutyManager",
+  "version": "1.0.0",
+  "description": "跟场任务：确认/没空/救场/取消/统计/求助卡片",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
