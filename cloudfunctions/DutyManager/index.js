@@ -8,6 +8,7 @@
 // action: declineDuty      —— 没空：单经理人置红 / 多经理人全员没空才置红
 // action: rescueDuty       —— 大群救场接单：红色 → 绿色
 // action: cancelMyDuty     —— 取消我的跟场：释放名额回黄色（<48h 安全锁）
+// action: generateHelpCard —— 生成求助卡片（红态，云端格式化 title/path）
 
 const cloud = require("wx-server-sdk");           //引入官方SDK，封装微信云函数能力的工具箱
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });   //动态识别，连接云环境
@@ -38,7 +39,6 @@ const DUTY_TYPE = Object.freeze({
   CONFIRM: "confirm",   // 确认跟场
   DECLINE: "decline",   // 没空
   RESCUE: "rescue",     // 救场接单
-  CANCEL: "cancel",     // 取消我的跟场
   ASSIGN: "assign",     // 运营者指派
 });
 
@@ -91,6 +91,8 @@ exports.main = async (event) => {
         return await rescueDuty(OPENID, event);
       case "cancelMyDuty":
         return await cancelMyDuty(OPENID, event);
+      case "generateHelpCard":
+        return await generateHelpCard(OPENID, event);
       case "getMyDuties":
         return await getMyDuties(OPENID, event);
       default:
@@ -269,7 +271,7 @@ async function getRescuePage(openid, event) {
 // —— 用例6：本队经理人历史跟场次数统计 ——
 // event: 无（teamId 取调用者本人队伍，忽略前端传参——契约：仅本队经理人可查）
 // 返回 data: { stats: [{ nickname, count }] }  // count 只计 confirm/rescue/assign
-async function getTeamStats(openid, event) {
+async function getTeamStats(openid, _event) {
   const user = await getUserByOpenid(openid);
   const guard = requireMember(user);
   if (guard) return guard;
@@ -474,7 +476,8 @@ async function rescueDuty(openid, event) {
   }
 
   await upsertDutyRecord(match, user, DUTY_TYPE.RESCUE);
-  const cellStatus = await recalcCellStatus({
+  // 刷新库内颜色（返回值不用于本 action 出参，rescue 恒置绿）
+  await recalcCellStatus({
     ...match, confirmerOpenid: openid,
   });
 
@@ -536,11 +539,35 @@ async function cancelMyDuty(openid, event) {
   });
 }
 
+// —— 用例8：生成求助卡片（云端格式化返回 title/path）——
+// 红态下本队经理人（member 需本队，admin 全场景）调用；前端 onShareAppMessage 同步返回缓存。
+// 返回 data: { title, path } —— title 含「跟场求助」+ 对阵 + 时间；path 指向救场页。
+async function generateHelpCard(openid, event) {
+  const user = await getUserByOpenid(openid);
+  if (!user) return fail(401, "请先绑定身份");
+
+  const { match, error } = await getMatchById(event.matchId);
+  if (error) return error;
+
+  // 权限：member 需本队，admin 全场景
+  const guard = requireTeamManager(user, match);
+  if (guard) return guard;
+
+  // 仅求助（红）态可生成求助卡片
+  if (match.cellStatus !== CELL_STATUS.HELP) {
+    return fail(409, "当前状态无需生成求助卡片");
+  }
+
+  const title = `【跟场求助】${match.teamName} vs ${match.rival} ${formatTime(match.matchTime)}，希望有空的同学补位！`;
+  const path = `/pages/rescue/index?matchId=${match._id}`;
+  return ok({ title, path });
+}
+
 // —— 用例10a：我的跟场列表 ——
 // event: 无（openid 自动注入）
 // 返回 data: { list: [MatchDTO] }  // 我当前跟场的、未完结未归档的比赛（confirmed 或 settle），
 //                                   // 按 matchTime 正序（最近要跟的排最前）
-async function getMyDuties(openid, event) {
+async function getMyDuties(openid, _event) {
   const user = await getUserByOpenid(openid);
   const guard = requireMember(user);
   if (guard) return guard;

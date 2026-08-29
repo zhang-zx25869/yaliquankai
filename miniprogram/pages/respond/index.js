@@ -1,5 +1,5 @@
 // pages/respond/index.js
-// B6 跟场响应页（用例6 ViewHistoryStats / 7 RespondSchedule / 8 ShareHelpCard / 10 CancelMyDuty）
+// B6 跟场响应页（用例6 ViewHistoryStats / 7 RespondSchedule / 8 GenerateHelpCard / 10 CancelMyDuty）
 // ── 阶段2 任务一：数据层（含 mock）。交互逻辑在任务三补全 ──
 const { call, getUser, waitForUser } = require("../../utils/call");
 const { CELL_STATUS, STATUS_META, ROLE, HOURS } = require("../../utils/status");
@@ -68,6 +68,7 @@ Page({
     wx.switchTab({ url: "/pages/profile/index" });
   },
 
+
   // 统一数据入口：mock / 真实云端只在这一处切换
   async fetchData(matchId) {
     this.setData({ loading: true });
@@ -107,6 +108,7 @@ Page({
           showCancel: false,
         });
       }
+      this.prefetchHelpCard(raw); // 红态预取云端求助卡片（用例8）
       return;
     }
     // —— 真实分支：契约 getRespondPage（阶段4 接通后启用）——
@@ -132,6 +134,7 @@ Page({
           showCancel: false,
         });
       }
+      this.prefetchHelpCard(m); // 红态预取云端求助卡片（用例8）
     } catch (e) {
       // 401 = 游客：云端按契约拒发数据，展示绑定引导块；其余错误 call 已统一 toast
       this.setData({ needBind: e && e.code === 401 });
@@ -160,6 +163,20 @@ Page({
     const d = new Date(ts);
     const pad = (n) => (n < 10 ? "0" + n : "" + n);
     return `${d.getMonth() + 1}月${d.getDate()}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  },
+
+  // 红态预取云端求助卡片（用例8 GenerateHelpCard）：
+  // 云端生成 { title, path } 缓存到 this._helpCard，onShareAppMessage 红态分支同步返回，
+  // 遵循「禁止在分享回调里临时 await 云函数」约定；未缓存/失败则回退本地拼装。
+  async prefetchHelpCard(match) {
+    this._helpCard = null;
+    if (!match || match.cellStatus !== CELL_STATUS.HELP) return;
+    try {
+      const data = await call("DutyManager", { action: "generateHelpCard", matchId: match._id });
+      this._helpCard = (data && data.title && data.path) ? data : null;
+    } catch (_e) {
+      this._helpCard = null;
+    }
   },
 
   // 统一状态更新：改 cellStatus 并同步刷新顶部色条（statusMeta），保证两者永远一致
@@ -235,7 +252,7 @@ Page({
     try {
       await call("DutyManager", { action: "confirmDuty", matchId: this.matchId });
       this.fetchData(this.matchId); // 重新拉取刷新
-    } catch (e) { /* call 已统一 toast */ }
+    } catch (_e) { /* call 已统一 toast */ }
   },
 
   // —— 用例7：没空 ——
@@ -311,7 +328,7 @@ Page({
           icon: "none",
         });
       }
-    } catch (e) { /* call 已统一 toast */ }
+    } catch (_e) { /* call 已统一 toast */ }
   },
 
   // mock：取消确认 ≡ 本人最新表态变为「没空」（接口约定·取消语义）
@@ -386,7 +403,7 @@ Page({
           showCancel: false,
         });
       }
-    } catch (e) { /* call 已统一 toast */ }
+    } catch (_e) { /* call 已统一 toast */ }
   },
 
   // —— 用例4/8：分享随状态（接口约定第七节定稿）——
@@ -398,10 +415,12 @@ Page({
       return { title: "雅力全开 · 赛事跟场", path: "/pages/index/index" };
     }
     if (m.cellStatus === CELL_STATUS.HELP) {
-      return {
-        title: `【跟场求助】${m.teamName} vs ${m.rival} ${m.timeText}，希望有空的同学补位！`,
-        path: `/pages/rescue/index?matchId=${m._id}`,
-      };
+      // 红态求助卡片：仅用云端 generateHelpCard 预取的缓存（本地拼装已删除）；
+      // 缓存未就绪/云端失败时落到下方首页兜底，不发送错误卡片。
+      if (this._helpCard) {
+        return this._helpCard;
+      }
+      return { title: "雅力全开 · 赛事跟场", path: "/pages/index/index" };
     }
     if (m.cellStatus === CELL_STATUS.PENDING || m.cellStatus === CELL_STATUS.CONFIRMED) {
       return {

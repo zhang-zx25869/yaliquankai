@@ -42,7 +42,7 @@ Page({
     try {
       const res = await call("DutyManager", { action:"getMyDuties" });
       this.setData({ myDuties: (res.list || []).map((raw) => this.formatMatch(raw)) });
-    } catch (e) {
+    } catch (_e) {
       // 错误提示已由 call 统一 toast；列表保持原样，下次 onShow 重试
     } finally {
       this.setData({ loadingDuties: false });
@@ -107,10 +107,11 @@ Page({
         // 回黄场景：名额已释放，正常提示
         wx.showToast({ title: "已取消跟场", icon: "success" });
       }
-    } catch (e) {
+    } catch (_e) {
       // 404 无确认记录 / 409 终态等，toast 已由 call 统一处理
     }
   },
+
 
   onCodeInput(e) {
     this.setData({ codeInput: e.detail.value });
@@ -135,7 +136,7 @@ Page({
         showCancel: false,
       });
       this.refreshUser();
-    } catch (e) {
+    } catch (_e) {
       // 错误提示已由 call 统一 toast
     } finally {
       this.setData({ binding: false });

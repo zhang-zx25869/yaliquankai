@@ -43,7 +43,6 @@ const DUTY_TYPE = Object.freeze({
   CONFIRM: "confirm",   // 确认跟场
   DECLINE: "decline",   // 没空
   RESCUE: "rescue",     // 救场接单
-  CANCEL: "cancel",     // 取消我的跟场
   ASSIGN: "assign",     // 运营者指派
 });
 

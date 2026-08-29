@@ -1,4 +1,4 @@
-// —— 三套 mock 比赛：分别对应要测的三种场景 ——
+// —— 四套 mock 比赛：分别对应要测的四种场景 ——
 // matchTime 用 3 天后（正常）/ 2 小时后（触发 48h 安全锁）
 const { CELL_STATUS } = require("./status");
 
@@ -60,5 +60,6 @@ const MOCK_MATCHES = {
     cellStatus: CELL_STATUS.HELP,
   },
 };
+
 
 module.exports = { MOCK_MATCHES };
