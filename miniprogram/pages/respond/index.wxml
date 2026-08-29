@@ -7,7 +7,13 @@
   </view>
 
   <block wx:elif="{{!match}}">
-    <view class="loading"><text>无法获取比赛信息</text></view>
+    <!-- 401 游客：云端按契约拒发比赛数据 → 绑定引导（原 mock 时代的 guest-tip 已不可达，删除） -->
+    <view wx:if="{{needBind}}" class="guest-block">
+      <text class="guest-block-title">请先绑定身份</text>
+      <text class="guest-block-desc">跟场响应仅对已绑定的本队经理人开放。请到「我的」页输入激活码完成绑定。</text>
+      <button class="guest-block-btn" bindtap="onGoBind">去绑定</button>
+    </view>
+    <view wx:else class="loading"><text>无法获取比赛信息</text></view>
   </block>
 
   <block wx:else>
@@ -52,44 +58,61 @@
       <view wx:if="{{!stats.length}}" class="stat-empty">暂无统计</view>
     </view>
 
-    <!-- 游客提示条（非 member 只读） -->
-    <view wx:if="{{role !== roleMember}}" class="guest-tip">
-      <text>当前为游客身份，仅可查看比赛信息；绑定部员身份后方可响应跟场。</text>
-    </view>
+    <!-- ── 区3：态度区（用例7/10，双通道定稿：确认黄/红态均可点，没空仅黄态） ── -->
+  <view class="card" wx:if="{{role === roleMember || role === roleAdmin}}">
 
-    <!-- ── 区3：态度区（用例7/10，按 myStatus + 角色 控显隐） ── -->
-  <view class="card" wx:if="{{role === roleMember}}">
-
-      <!-- 未表态：确认 / 没空 两个按钮 -->
-      <block wx:if="{{myStatus === 'none' && (match.cellStatus === cellStatusPending || match.cellStatus === cellStatusHelp)}}">
-        <button class="btn btn-primary" bindtap="onConfirm">确认跟场</button>
-        <button wx:if="{{match.cellStatus === cellStatusPending}}" class="btn btn-plain" bindtap="onDecline">没空</button>
+      <!-- 未表态 -->
+      <block wx:if="{{myStatus === myStatusNone}}">
+        <!-- 黄态：确认 + 没空 两个按钮（已开赛禁表态，云端 409 双保险） -->
+        <block wx:if="{{match.cellStatus === cellStatusPending}}">
+          <button class="btn btn-primary" wx:if="{{!match.started}}" bindtap="onConfirm">确认跟场</button>
+          <button class="btn btn-plain" wx:if="{{!match.started}}" bindtap="onDecline">没空</button>
+        </block>
+        <!-- 红态：只显示确认（双通道——本队经理人任何时刻可回补），没空无意义隐藏 -->
+        <block wx:elif="{{match.cellStatus === cellStatusHelp}}">
+          <view class="my-state" wx:if="{{redTip}}">
+            <view class="my-dot" style="background: {{match.statusMeta.color}}" />
+            <text class="my-state-text">{{redTip}}</text>
+          </view>
+          <button class="btn btn-primary" wx:if="{{!match.started}}" bindtap="onConfirm">确认跟场</button>
+        </block>
+        <!-- 绿/橙：他人已确认或待结算——只读说明（补空白卡片） -->
+        <block wx:else>
+          <view class="my-state" wx:if="{{match.cellStatus === cellStatusConfirmed}}">
+            <view class="my-dot" style="background: {{match.statusMeta.color}}" />
+            <text class="my-state-text">本场已由 {{match.confirmerName || '其他部员'}} 确认跟场</text>
+          </view>
+          <view class="my-state" wx:elif="{{match.cellStatus === cellStatusSettle}}">
+            <view class="my-dot" style="background: {{match.statusMeta.color}}" />
+            <text class="my-state-text">比赛已结束，等待跟场人提交赛果</text>
+          </view>
+        </block>
       </block>
 
-      <!-- 已确认：显示状态 + 取消我的跟场 -->
-      <block wx:elif="{{myStatus === 'confirmed'}}">
+        <!-- 已确认：settle 等终态只留状态行，取消按钮仅绿态且未开赛显示 -->
+        <block wx:elif="{{myStatus === myStatusConfirmed}}">
         <view class="my-state">
           <view class="my-dot" style="background: {{match.statusMeta.color}}" />
-          <text class="my-state-text">我已确认跟场</text>
+          <text class="my-state-text">{{match.cellStatus === cellStatusConfirmed ? '我已确认跟场' : '我已确认跟场 · 待提交赛果'}}</text>
         </view>
-        <button class="btn btn-warn" bindtap="onCancelDuty">取消我的跟场</button>
+        <button class="btn btn-warn" wx:if="{{match.cellStatus === cellStatusConfirmed && !match.started}}" bindtap="onCancelDuty">取消我的跟场</button>
       </block>
 
-      <!-- 已没空：显示文案 + 反悔按钮（之后又有空了可改回确认跟场） -->
-      <block wx:elif="{{myStatus === 'declined'}}">
+      <!-- 已没空：黄态显示反悔按钮；红态也可反悔确认（回补通道） -->
+      <block wx:elif="{{myStatus === myStatusDeclined && (match.cellStatus === cellStatusPending || match.cellStatus === cellStatusHelp)}}">
         <view class="my-state">
           <view class="my-dot" style="background: {{match.statusMeta.color}}" />
           <text class="my-state-text">暂时没空，下次一定</text>
         </view>
-        <button class="btn btn-primary" bindtap="onConfirm">有空，确认跟场</button>
+        <button class="btn btn-primary" wx:if="{{!match.started}}" bindtap="onConfirm">有空，确认跟场</button>
       </block>
 
     </view>
 
-    <!-- ── 区4：求助区（用例8，红态且当前用户为本队经理人） ── -->
-  <view class="card help-card" wx:if="{{match.cellStatus === cellStatusHelp && canHelp}}">
+    <!-- ── 区4：求助区（用例8，红态下全队经理人皆可生成转发，第一责任人仅文案指称） ── -->
+  <view class="card help-card" wx:if="{{(role === roleMember || role === roleAdmin) && match.cellStatus === cellStatusHelp && canHelp}}">
       <view class="section-title help-title">⚠️ 需要帮助</view>
-      <text class="help-desc">本场跟场无人确认，请生成求助卡片并转发至体育部大群，同时私聊部长报备。</text>
+      <text class="help-desc">本队经理人全员没空，等待大群救场</text>
       <button class="btn btn-danger" open-type="share">生成求助卡片并转发</button>
     </view>
 

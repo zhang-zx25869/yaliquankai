@@ -13,8 +13,8 @@ yaliquankai/
 │   │   ├── team/             # B3 队伍栏目（用例19）【收尾】
 │   │   ├── dashboard/        # B4 四色看板（用例13/14/15）【C·看板线】
 │   │   ├── profile/          # B5 我的·身份与激活码绑定（用例1/2）【已完成】
-│   │   ├── respond/          # B6 跟场响应页（用例6/7/8/10）【B·跟场线】
-│   │   ├── rescue/           # B7 救场接单页（用例9）【B·跟场线】
+│   │   ├── respond/          # B6 跟场响应页（用例6/7/8/10）【B·跟场线·已完成】
+│   │   ├── rescue/           # B7 救场接单页（用例9）【B·跟场线·已完成】
 │   │   ├── archive/          # B8 赛后归档页（用例11/12）【C·看板线】
 │   │   └── schedule-form/    # B9 赛程表单页（用例3/5）【A·赛程线】
 │   ├── components/
@@ -27,11 +27,11 @@ yaliquankai/
 ├── cloudfunctions/           # 云函数（控制类）
 │   ├── AuthManager/          # C1 身份认证【已完成】
 │   ├── ScheduleManager/      # C2 赛程管理【契约骨架，待实装】
-│   └── DutyManager/          # C3 跟场任务【契约空壳，待实装】
+│   └── DutyManager/          # C3 跟场任务【B·已完成：9 action 已实装】
 └── project.config.json
 ```
 
-待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。`ScheduleManager` 已完成 Day 2 契约骨架，A 线后续实装其业务 action，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。
+**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；...`ScheduleManager` 已完成 Day 2 契约骨架，A 线后续实装其业务 action，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
 
 ## 环境信息
 
@@ -80,7 +80,6 @@ GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 
 3. 为 `MatchCollection.createRequestId` 建唯一索引，用于防止新建赛程网络重试产生重复记录；
 4. 按 `接口约定.md` 8.1 实现 TBD、时间校验、revision/version、requestId 幂等、状态守卫和分享预加载规则；
 5. A 线完成 `CalendarManager.getCalendar/getMatchDetail` 后再验收首页，不以长期 mock 代替公开读取接口。
-
 ## 部署清单（首次）
 
 1. 云开发控制台确认 6 个集合（见上），并将权限设为前端不可读写；
