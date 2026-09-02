@@ -189,6 +189,7 @@ async function countTeamManager(teamId) {
 
 // 查本人对某场比赛的表态类型（myStatus 用）：none | confirmed | declined
 // 幂等由写入侧保证：一人一场至多一条有效表态记录（upsert 覆盖），直接查即可
+// assign（运营者指派）与 confirm/rescue 同属「已承担本场跟场」，一并映射为 myStatus=confirmed
 async function getMyLatestType(matchId, openid) {
   if(!matchId || !openid) return "none";
   const res = await db.collection("DutyRecordCollection")
@@ -198,7 +199,7 @@ async function getMyLatestType(matchId, openid) {
   .get();
   const rec = res.data[0];
   if(!rec) return "none";
-  if (rec.type === DUTY_TYPE.CONFIRM || rec.type === DUTY_TYPE.RESCUE) return "confirmed";
+  if (rec.type === DUTY_TYPE.CONFIRM || rec.type === DUTY_TYPE.RESCUE || rec.type === DUTY_TYPE.ASSIGN) return "confirmed";
   if (rec.type === DUTY_TYPE.DECLINE) return "declined";
   return "none";
 }
