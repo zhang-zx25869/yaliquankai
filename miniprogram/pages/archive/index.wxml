@@ -1,0 +1,95 @@
+<!-- B8 赛后归档页（用例11/12）—— C同学看板线 -->
+<view class="page">
+
+  <!-- 加载占位 -->
+  <view wx:if="{{loading}}" class="loading">
+    <text>加载中…</text>
+  </view>
+
+  <block wx:elif="{{!match}}">
+    <!-- 401 游客：绑定引导 -->
+    <view wx:if="{{needBind}}" class="guest-block">
+      <text class="guest-block-title">请先绑定身份</text>
+      <text class="guest-block-desc">赛后归档仅对已绑定身份的成员开放。请到「我的」页输入激活码完成绑定。</text>
+      <button class="guest-block-btn" bindtap="onGoBind">去绑定</button>
+    </view>
+    <!-- 403 非本队成员（分享路径直达时可能出现） -->
+    <view wx:elif="{{noPerm}}" class="guest-block">
+      <text class="guest-block-title">暂无查看权限</text>
+      <text class="guest-block-desc">归档详情仅对本队成员与运营者开放。</text>
+    </view>
+    <view wx:else class="loading"><text>无法获取比赛信息</text></view>
+  </block>
+
+  <block wx:else>
+
+    <!-- ── 区1：比赛信息 ── -->
+    <view class="card">
+      <!-- 顶部状态色条：颜色/文字来自 statusMeta（utils/status.js） -->
+      <view class="status-bar" style="background: {{match.statusMeta.color}}">
+        <text class="status-bar-text">{{match.statusMeta.label}}</text>
+      </view>
+
+      <view class="vs-block">
+        <text class="vs">{{match.teamName}} vs {{match.rival}}</text>
+        <text class="sport">{{match.sport}}</text>
+      </view>
+
+      <view class="info-row">
+        <text class="info-label">时间</text>
+        <text class="info-value">{{match.timeText}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">地点</text>
+        <text class="info-value">{{match.location}}</text>
+      </view>
+      <view class="info-row">
+        <text class="info-label">后勤需求</text>
+        <text class="info-value">{{match.demandsText || '无'}}</text>
+      </view>
+      <view class="info-row" wx:if="{{match.confirmerName}}">
+        <text class="info-label">跟场人</text>
+        <text class="info-value info-confirmer">{{match.confirmerName}} 已确认</text>
+      </view>
+    </view>
+
+    <!-- 非橙态提示：看板只从橙色单元格进入本页，直达链接可能带着其他状态 -->
+    <view class="warn-tip" wx:if="{{match.cellStatus !== cellStatusSettle}}">
+      <text>该场比赛尚未结束（当前：{{match.statusMeta.label}}），暂不能提交归档</text>
+    </view>
+
+    <!-- ── 区2：归档表单（用例11：比分/胜负必填；用例12：云盘链接选填） ── -->
+    <view class="card">
+      <view class="section-title">提交赛果归档</view>
+      <text class="form-hint">比分与胜负结果为必填项；现场照片视频可整理到云盘后粘贴一条汇总链接（选填，不影响提交）</text>
+
+      <input
+        class="input"
+        placeholder="比分（如 3:1）"
+        value="{{score}}"
+        bindinput="onScoreInput"
+      />
+      <input
+        class="input"
+        placeholder="胜负结果（如 胜 / 负 / 平）"
+        value="{{result}}"
+        bindinput="onResultInput"
+      />
+      <input
+        class="input"
+        placeholder="云盘汇总链接（选填）"
+        value="{{mediaLink}}"
+        bindinput="onLinkInput"
+      />
+
+      <view class="perm-hint" wx:if="{{!canSubmitHint}}">
+        <text>仅本场跟场人或运营者可提交赛果</text>
+      </view>
+
+      <button class="btn btn-primary" bindtap="onSubmit" disabled="{{submitting}}">
+        {{submitting ? "提交中..." : "提交归档"}}
+      </button>
+    </view>
+
+  </block>
+</view>

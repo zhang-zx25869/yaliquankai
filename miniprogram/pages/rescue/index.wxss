@@ -1,0 +1,211 @@
+/* B7 救场接单页样式：红色警示 + 比赛信息 + 救场按钮 / 成功态 */
+.page {
+  padding: 24rpx;
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom)); /* iPhone 底部安全区 */
+  background: #f6f6f6;
+  min-height: 100vh;
+  box-sizing: border-box;
+}
+
+/* 加载占位 */
+.loading {
+  padding: 120rpx 0;
+  text-align: center;
+  color: #999;
+  font-size: 28rpx;
+}
+
+/* ── 红色求助警示条 ── */
+.help-banner {
+  background: #fff1f0;
+  border: 2rpx solid #ffccc7;
+  border-radius: 16rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+}
+.help-banner-title {
+  display: block;
+  color: #e64340;
+  font-size: 32rpx;
+  font-weight: 700;
+  margin-bottom: 8rpx;
+}
+.help-banner-reason {
+  display: block;
+  color: #b34a48;
+  font-size: 26rpx;
+  line-height: 1.5;
+}
+
+/* 已有人跟场的友好横幅（A4：替代红色警示，防止误导） */
+.help-banner-done {
+  background: #f0f9eb;
+  border-color: #d9f0c7;
+}
+.help-banner-title-done {
+  display: block;
+  color: #33c275;
+  font-size: 32rpx;
+  font-weight: 700;
+  margin-bottom: 8rpx;
+}
+.help-banner-done .help-banner-reason {
+  color: #5a9a72;
+}
+
+/* ── 比赛信息卡片 ── */
+.card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  margin-bottom: 24rpx;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.status-bar {
+  height: 56rpx;
+  border-radius: 12rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 24rpx;
+}
+.status-bar-text {
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 600;
+  letter-spacing: 2rpx;
+}
+.vs-block {
+  text-align: center;
+  margin-bottom: 20rpx;
+}
+.vs {
+  font-size: 40rpx;
+  font-weight: 700;
+  display: block;
+}
+.sport {
+  font-size: 26rpx;
+  color: #999;
+  margin-top: 8rpx;
+}
+.info-row {
+  display: flex;
+  padding: 12rpx 0;
+  border-top: 1rpx solid #f0f0f0;
+}
+.info-label {
+  width: 160rpx;
+  color: #999;
+  font-size: 28rpx;
+  flex-shrink: 0;
+}
+.info-value {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+.info-confirmer {
+  color: #33c275;
+  font-weight: 600;
+}
+
+/* 401 游客绑定引导块（替代原 mock 时代不可达的 guest-tip） */
+.guest-block {
+  background: #fff7f8;
+  border: 1rpx solid #f2c7cd;
+  border-radius: 16rpx;
+  padding: 56rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.guest-block-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #7a1733;
+}
+.guest-block-desc {
+  font-size: 26rpx;
+  color: #8c5058;
+  line-height: 1.6;
+  text-align: center;
+  margin: 20rpx 0 36rpx;
+}
+.guest-block-btn {
+  width: 320rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 40rpx;
+  background: #7a1733;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  padding: 0;
+}
+.guest-block-btn::after { border: none; }
+
+/* ── 救场按钮 ── */
+.btn {
+  width: 100%;
+  margin-top: 16rpx;
+  border-radius: 14rpx;
+  font-size: 32rpx;
+  font-weight: 600;
+  height: 88rpx;
+  line-height: 88rpx;
+}
+.btn::after { border: none; }
+.btn-danger {
+  background: #e64340;
+  color: #fff;
+}
+.btn-danger:active { background: #d03a37; }
+.btn-danger[disabled] {
+  background: #f0c4c2;
+  color: #fff;
+}
+
+/* ── 救场成功态 ── */
+.success-card {
+  background: #fff;
+  border-radius: 20rpx;
+  padding: 80rpx 40rpx;
+  margin-top: 120rpx;
+  text-align: center;
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+.success-icon {
+  font-size: 100rpx;
+  margin-bottom: 20rpx;
+}
+.success-title {
+  display: block;
+  font-size: 40rpx;
+  font-weight: 700;
+  color: #333;
+  margin-bottom: 12rpx;
+}
+.success-desc {
+  font-size: 28rpx;
+  color: #999;
+}
+
+/* 成功态内补充说明 */
+.success-sub {
+  display: block;
+  font-size: 24rpx;
+  color: #bbb;
+  margin-top: 16rpx;
+  line-height: 1.6;
+}
+
+/* 取消救场按钮：弱化样式，避免误点，但有明确出口 */
+.btn-cancel {
+  background: #f5f5f5;
+  color: #888;
+  font-size: 28rpx;
+  font-weight: 500;
+  margin-top: 48rpx;
+}
+.btn-cancel:active { background: #eaeaea; }

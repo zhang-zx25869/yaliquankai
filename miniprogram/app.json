@@ -1,0 +1,58 @@
+{
+  "pages": [
+    "pages/index/index",
+    "pages/team/index",
+    "pages/dashboard/index",
+    "pages/profile/index",
+    "pages/respond/index",
+    "pages/rescue/index",
+    "pages/archive/index",
+    "pages/schedule-form/index"
+  ],
+  "usingComponents": {
+    "match-detail-card": "/components/match-detail-card/index",
+    "page-placeholder": "/components/page-placeholder/index"
+  },
+  "window": {
+    "backgroundColor": "#F6F6F6",
+    "backgroundTextStyle": "light",
+    "navigationBarBackgroundColor": "#7a1733",
+    "navigationBarTitleText": "雅力全开",
+    "navigationBarTextStyle": "white"
+  },
+  "tabBar": {
+    "color": "#7F7F7F",
+    "selectedColor": "#7a1733",
+    "backgroundColor": "#ffffff",
+    "borderStyle": "black",
+    "list": [
+      {
+        "pagePath": "pages/index/index",
+        "text": "首页",
+        "iconPath": "images/icons/home.png",
+        "selectedIconPath": "images/icons/home-active.png"
+      },
+      {
+        "pagePath": "pages/team/index",
+        "text": "队伍",
+        "iconPath": "images/icons/goods.png",
+        "selectedIconPath": "images/icons/goods-active.png"
+      },
+      {
+        "pagePath": "pages/dashboard/index",
+        "text": "看板",
+        "iconPath": "images/icons/business.png",
+        "selectedIconPath": "images/icons/business-active.png"
+      },
+      {
+        "pagePath": "pages/profile/index",
+        "text": "我的",
+        "iconPath": "images/icons/usercenter.png",
+        "selectedIconPath": "images/icons/usercenter-active.png"
+      }
+    ]
+  },
+  "sitemapLocation": "sitemap.json",
+  "style": "v2",
+  "lazyCodeLoading": "requiredComponents"
+}

@@ -1,0 +1,9 @@
+{
+  "name": "TimerChecker",
+  "version": "1.0.0",
+  "description": "定时巡检：临期未确认拉红 / 到达结束时间转橙（每小时）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

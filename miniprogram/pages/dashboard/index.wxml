@@ -1,0 +1,107 @@
+<!-- B4 四色看板页（用例13/14/15）—— C同学看板线 -->
+<view class="page">
+
+  <view wx:if="{{loading}}" class="loading"><text>加载中…</text></view>
+
+  <!-- 游客：看板仅对已绑定身份开放（用例13） -->
+  <view wx:elif="{{needBind}}" class="card guest-card">
+    <text class="guest-title">看板仅对已绑定身份开放</text>
+    <text class="guest-desc">使用体育部分发的一次性激活码绑定队长 / 部员 / 运营者身份后，即可查看全部代表队的跟场状态。</text>
+    <button class="primary-btn" bindtap="onGoBind">去「我的」页绑定</button>
+  </view>
+
+  <block wx:else>
+
+    <!-- 状态图例 -->
+    <view class="card legend">
+      <view class="legend-item" wx:for="{{legend}}" wx:key="key">
+        <view class="legend-dot" style="background: {{item.color}}" />
+        <text class="legend-text">{{item.label}}</text>
+      </view>
+    </view>
+    <text class="legend-hint">点击橙色单元格直接归档 · 点击其他单元格展开详情</text>
+
+    <!-- 四色看板：行 = 队伍，列 = 按时间排列的场次（横向滚动） -->
+    <scroll-view scroll-x class="board-scroll" wx:if="{{rows.length}}">
+      <view class="board" style="{{boardStyle}}">
+        <view class="corner"><text>队伍</text></view>
+        <view class="col-head" wx:for="{{columns}}" wx:key="key">{{item.label}}</view>
+
+        <block wx:for="{{rows}}" wx:for-item="row" wx:key="teamId">
+          <view class="row-head"><text>{{row.teamName}}</text></view>
+          <view
+            class="cell {{cell.match && cell.match.cellStatus === cellStatusCancelled ? 'cell-cancelled' : ''}}"
+            wx:for="{{row.cells}}"
+            wx:for-item="cell"
+            wx:key="key"
+            data-id="{{cell.match._id}}"
+            bindtap="{{cell.match ? 'onCellTap' : ''}}"
+          >
+            <view wx:if="{{cell.match}}" class="chip" style="background: {{cell.match.statusMeta.color || '#999999'}}">
+              <text class="chip-vs">{{cell.match.rival}}</text>
+              <text class="chip-status">{{cell.match.statusMeta.label}}</text>
+              <text wx:if="{{cell.extra > 0}}" class="chip-extra">还有{{cell.extra}}场</text>
+            </view>
+            <view wx:else class="cell-empty">—</view>
+          </view>
+        </block>
+      </view>
+    </scroll-view>
+    <view wx:else class="empty"><text>暂无未销号的比赛</text></view>
+
+    <!-- 展开详情（在网格之外，避免撑破布局；用例13 第4步） -->
+    <view class="detail-area" wx:if="{{expandedMatch}}">
+      <match-detail-card
+        match="{{expandedMatch}}"
+        role="{{role}}"
+        show-actions="{{canManage}}"
+        expanded="{{true}}"
+        bind:toggle="onToggle"
+        bind:forcecancel="onForceCancel"
+        bind:manualreset="onManualReset"
+      />
+
+      <!-- 组件的管理按钮仅红态渲染；黄/绿态在页内补一组（组件零改动，用例14/15） -->
+      <view
+        class="admin-extra"
+        wx:if="{{canManage && (expandedMatch.cellStatus === cellStatusPending || expandedMatch.cellStatus === cellStatusConfirmed)}}"
+      >
+        <button class="btn-danger" size="mini" data-id="{{expandedMatch._id}}" bindtap="onForceCancelById">强制取消跟场</button>
+        <button class="btn-warn" size="mini" data-id="{{expandedMatch._id}}" bindtap="onManualResetById">手动修改跟场状态</button>
+      </view>
+    </view>
+
+    <!-- 手动修改跟场状态面板（用例15）：重置为黄色 / 指派跟场人 -->
+    <view class="mask" wx:if="{{resetPanel.show}}" bindtap="onResetCancel">
+      <view class="panel" catchtap="noop">
+        <text class="panel-title">手动修改跟场状态</text>
+        <text class="panel-sub">{{resetPanel.rival}}</text>
+
+        <radio-group bindchange="onResetTargetChange">
+          <label class="radio-row">
+            <radio value="{{cellStatusPending}}" checked="{{resetPanel.target === cellStatusPending}}" />
+            <text>重置为黄色（清空跟场人，重新等待确认）</text>
+          </label>
+          <label class="radio-row">
+            <radio value="{{cellStatusConfirmed}}" checked="{{resetPanel.target === cellStatusConfirmed}}" />
+            <text>指派跟场人（直接置绿并留痕）</text>
+          </label>
+        </radio-group>
+
+        <input
+          wx:if="{{resetPanel.target === cellStatusConfirmed}}"
+          class="nickname-input"
+          placeholder="输入被指派部员的昵称"
+          value="{{resetPanel.nickname}}"
+          bindinput="onNicknameInput"
+        />
+
+        <view class="panel-actions">
+          <button class="btn-plain" size="mini" bindtap="onResetCancel">取消</button>
+          <button class="btn-primary" size="mini" bindtap="onResetSubmit">提交</button>
+        </view>
+      </view>
+    </view>
+
+  </block>
+</view>
