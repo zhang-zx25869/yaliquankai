@@ -26,12 +26,12 @@ yaliquankai/
 │       └── status.js         # D2 状态机常量（黄/绿/红/橙/灰 + 角色）
 ├── cloudfunctions/           # 云函数（控制类）
 │   ├── AuthManager/          # C1 身份认证【已完成】
-│   ├── ScheduleManager/      # C2 赛程管理【契约骨架，待实装】
+│   ├── ScheduleManager/      # C2 赛程管理【冲刺第 1 天查询与新建已实装】
 │   └── DutyManager/          # C3 跟场任务【B·已完成：9 action 已实装】
 └── project.config.json
 ```
 
-**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；...`ScheduleManager` 已完成 Day 2 契约骨架，A 线后续实装其业务 action，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
+**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；...`ScheduleManager` 已实装本队赛程查询、编辑原始数据读取和普通/TBD 新建，A 线后续完成修改、取消与分享，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
 
 ## 环境信息
 
@@ -72,6 +72,13 @@ npm run check  # 依次执行 lint + test，提交前推荐运行
 ```
 
 GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 自动执行 `npm ci` 和 `npm run check`。CI 通过不能替代微信开发者工具编译和真机测试；涉及云函数的改动仍需部署到开发环境后完成联调。
+
+## A 线冲刺第 1 天
+
+- 已完成 `getMyMatches`、`getMatchForEdit`、`saveMatch` 新建分支，以及首页队长发布入口、赛程表单、时间校验和新建重试保护。
+- 2026-10-02 合并修复：从 `b551cbb` 恢复合并提交 `e90e3bb` 丢失的云函数、表单逻辑、首页跳转和赛程测试；在当前合并版本上继续开发。
+- 修复后本地全量检查：ESLint 零警告，69 项测试通过。
+- 部署、云端联调和真机验收按用户要求自行处理；详情见 [第一天交接说明](docs/a-line-day1.md)。
 
 ## A 线开工前确认
 
