@@ -1,4 +1,5 @@
-<page-placeholder
-  title="公共赛程"
-  description="公共赛程日历正在建设中"
-/>
+<view wx:if="{{isCaptain}}" class="captain-entry">
+  <view class="entry-title">队长赛程管理</view>
+  <button class="publish-button" bindtap="onPublish">发布赛程</button>
+</view>
+<page-placeholder title="公共赛程" description="公共赛程日历正在建设中" />

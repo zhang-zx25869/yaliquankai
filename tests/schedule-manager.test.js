@@ -12,7 +12,7 @@ function loadScheduleManager(options = {}) {
   const originalLoad = Module._load;
   const cloud = {
     DYNAMIC_CURRENT_ENV: "test",
-    init() {},
+    init() { },
     getWXContext() {
       if (options.contextError) throw options.contextError;
       return { OPENID: options.openid || "openid-captain" };
@@ -55,7 +55,7 @@ test("unknown or missing actions return the standard parameter error", async () 
 test("unexpected cloud errors are converted to the standard server error", async () => {
   const schedule = loadScheduleManager({ contextError: new Error("context unavailable") });
   const originalError = console.error;
-  console.error = () => {};
+  console.error = () => { };
 
   try {
     assert.deepEqual(await schedule.main({ action: "getMyMatches" }), {
