@@ -12,4 +12,8 @@ Page({
       // 身份未就绪时保持公开首页，队长入口不显示。
     }
   },
+  onPublish() {
+    if (getUser().role !== ROLE.CAPTAIN) return;
+    wx.navigateTo({ url: "/pages/schedule-form/index" });
+  },
 });
