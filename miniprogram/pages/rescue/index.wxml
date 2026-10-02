@@ -7,24 +7,36 @@
   </view>
 
   <block wx:elif="{{!match}}">
-    <view class="loading"><text>无法获取比赛信息</text></view>
+    <!-- 401 游客：云端按契约拒发比赛数据 → 绑定引导（原 mock 时代的 guest-tip 已不可达，删除） -->
+    <view wx:if="{{needBind}}" class="guest-block">
+      <text class="guest-block-title">请先绑定身份</text>
+      <text class="guest-block-desc">救场接单仅对已绑定的部员开放。请到「我的」页输入激活码完成绑定。</text>
+      <button class="guest-block-btn" bindtap="onGoBind">去绑定</button>
+    </view>
+    <view wx:else class="loading"><text>无法获取比赛信息</text></view>
   </block>
 
   <block wx:else>
 
-    <!-- ── 救场成功态：接单完成后切换到这里 ── -->
+    <!-- ── 救场成功态：接单完成后 / 重新进入时（我已是本场跟场人）显示 ── -->
     <view wx:if="{{myStatus === 'confirmed'}}" class="success-card">
       <view class="success-icon">🎉</view>
       <text class="success-title">救场成功！</text>
       <text class="success-desc">体育部不会忘记你做的一切……</text>
+      <!-- 取消救场：释放名额回黄色待确认（已开赛禁取消，云端 409 双保险） -->
+      <button wx:if="{{(role === roleMember || role === roleAdmin) && !match.started}}" class="btn btn-cancel" bindtap="onCancelRescue">取消我的救场</button>
     </view>
 
     <block wx:else>
 
-      <!-- ── 红色求助警示条 ── -->
-      <view class="help-banner">
-        <text class="help-banner-title">⚠️ 本场跟场急需支援</text>
-        <text class="help-banner-reason">本队经理人全员没空，等待大群救场</text>
+      <!-- ── 顶部横幅（文案由 JS buildBanner 生成，WXML 只显示；红态=求助，绿=已有人） ── -->
+      <view class="help-banner" wx:if="{{match.cellStatus === cellStatusHelp}}">
+        <text class="help-banner-title">{{bannerTitle}}</text>
+        <text class="help-banner-reason">{{bannerReason}}</text>
+      </view>
+      <view class="help-banner help-banner-done" wx:elif="{{match.cellStatus === cellStatusConfirmed}}">
+        <text class="help-banner-title-done">{{bannerTitle}}</text>
+        <text class="help-banner-reason">{{bannerReason}}</text>
       </view>
 
       <!-- ── 比赛信息卡片 ── -->
@@ -56,17 +68,12 @@
         </view>
       </view>
 
-      <!-- 游客提示条（非 member 只读） -->
-      <view wx:if="{{role !== roleMember}}" class="guest-tip">
-        <text>当前为游客身份，仅部员可救场。请先绑定部员身份。</text>
-      </view>
-
-      <!-- ── 救场按钮：仅部员 + 求助态 可点 ── -->
+      <!-- ── 救场按钮：仅部员 + 求助态 + 未开赛 可点 ── -->
       <button
         class="btn btn-danger"
-      wx:if="{{role === roleMember}}"
+      wx:if="{{role === roleMember || role === roleAdmin}}"
         bindtap="onRescue"
-        disabled="{{match.cellStatus !== cellStatusHelp}}"
+        disabled="{{match.cellStatus !== cellStatusHelp || match.started}}"
       >我来救场</button>
 
     </block>

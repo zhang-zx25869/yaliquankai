@@ -92,16 +92,40 @@
 .stat-count { font-size: 28rpx; font-weight: 600; color: #7a1733; }
 .stat-empty { color: #999; font-size: 26rpx; text-align: center; padding: 16rpx 0; }
 
-/* 游客提示条 */
-.guest-tip {
-  background: #fff7e6;
-  border: 1rpx solid #ffe1a8;
-  border-radius: 12rpx;
-  padding: 16rpx 20rpx;
-  font-size: 24rpx;
-  color: #b58a2e;
-  margin-bottom: 24rpx;
+/* 401 游客绑定引导块（替代原 mock 时代不可达的 guest-tip） */
+.guest-block {
+  background: #fff7f8;
+  border: 1rpx solid #f2c7cd;
+  border-radius: 16rpx;
+  padding: 56rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
 }
+.guest-block-title {
+  font-size: 34rpx;
+  font-weight: 600;
+  color: #7a1733;
+}
+.guest-block-desc {
+  font-size: 26rpx;
+  color: #8c5058;
+  line-height: 1.6;
+  text-align: center;
+  margin: 20rpx 0 36rpx;
+}
+.guest-block-btn {
+  width: 320rpx;
+  height: 80rpx;
+  line-height: 80rpx;
+  border-radius: 40rpx;
+  background: #7a1733;
+  color: #fff;
+  font-size: 30rpx;
+  font-weight: 600;
+  padding: 0;
+}
+.guest-block-btn::after { border: none; }
 
 /* ── 区3：态度区 ── */
 .my-state {

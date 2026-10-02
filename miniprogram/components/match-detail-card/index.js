@@ -45,6 +45,7 @@ Component({
     roleAdmin: ROLE.ADMIN,
     roleMember: ROLE.MEMBER,
     cellStatusHelp: CELL_STATUS.HELP,
+    cellStatusConfirmed: CELL_STATUS.CONFIRMED,
   },
 
   methods: {

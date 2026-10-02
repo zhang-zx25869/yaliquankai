@@ -1,0 +1,9 @@
+{
+  "name": "DashboardManager",
+  "version": "1.0.0",
+  "description": "看板与运营者裁决：看板聚合 / 强制取消跟场 / 手动修改跟场状态",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

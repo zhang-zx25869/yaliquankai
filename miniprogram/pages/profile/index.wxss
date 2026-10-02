@@ -34,3 +34,12 @@
   border-radius: 12rpx;
 }
 .bind-btn.disabled { opacity: 0.6; }
+
+/* B5b 我的跟场卡片 */
+.duty-card { gap: 8rpx; }
+.duty-empty {
+  font-size: 26rpx;
+  color: #999;
+  text-align: center;
+  padding: 30rpx 0;
+}

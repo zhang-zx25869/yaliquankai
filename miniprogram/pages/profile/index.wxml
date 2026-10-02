@@ -1,4 +1,4 @@
-<!-- B5 我的页：身份显示 + 激活码绑定 -->
+<!-- B5 我的页：身份显示 + 激活码绑定 + 我的跟场（B5b） -->
 <view class="container">
 
   <!-- 身份卡片 -->
@@ -33,6 +33,27 @@
   <view class="card" wx:else>
     <text class="card-title">我的权限</text>
     <text class="card-hint">身份已与微信永久绑定，后续使用无需重复验证</text>
+  </view>
+
+  <!-- B5b 我的跟场（member/admin）：进行中的跟场任务 -->
+  <view class="card duty-card" wx:if="{{userInfo.role === roleMember || userInfo.role === roleAdmin}}">
+    <text class="card-title">我的跟场</text>
+    <text class="card-hint">我当前负责的跟场任务（状态：确认 / 救场 / 待结算）</text>
+
+    <view wx:if="{{loadingDuties}}" class="duty-empty">加载中...</view>
+
+    <block wx:elif="{{myDuties.length}}">
+      <match-detail-card
+        wx:for="{{myDuties}}"
+        wx:key="_id"
+        match="{{item}}"
+        role="{{userInfo.role}}"
+        show-actions
+        bind:cancelduty="onCancelDuty"
+      />
+    </block>
+
+    <view wx:else class="duty-empty">暂无进行中的跟场任务</view>
   </view>
 
 </view>
