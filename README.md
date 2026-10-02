@@ -26,7 +26,7 @@ yaliquankai/
 │       └── status.js         # D2 状态机常量（黄/绿/红/橙/灰 + 角色）
 ├── cloudfunctions/           # 云函数（控制类）
 │   ├── AuthManager/          # C1 身份认证【已完成】
-│   ├── ScheduleManager/      # C2 赛程管理【Day 3 权限与 DTO 工具已完成】
+│   ├── ScheduleManager/      # C2 赛程管理【冲刺第 1 天查询与新建已实装】
 │   └── DutyManager/          # C3 跟场任务【契约空壳，待实装】
 └── project.config.json
 ```
@@ -78,10 +78,12 @@ GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 
 - Day 2：完成 `ScheduleManager` 契约骨架和基础 mock 测试。
 - Day 3：完成统一队长身份、启用队伍与比赛归属校验；客户端传入的 `openid/role/teamId/teamName` 不参与授权。游客返回 401，非队长/跨队/无有效队伍返回 403，比赛不存在返回 404，数据库异常返回 500。
 - Day 3：新增 `ScheduleSummaryDTO`、`ScheduleEditDTO` 和公共 `MatchDTO` 白名单转换；不返回 openid、requestId 或任意扩展字段；复制后勤需求数组，TBD 时间归一为 `null`，展示时间固定使用 `Asia/Shanghai`。
-- 当前五个业务 action 通过权限校验后仍返回 501「开发中」，尚未开放业务查询或写入。后续写操作必须在事务内重新校验比赛归属、状态和版本。
+- Day 3 阶段：五个业务 action 通过权限校验后仍返回 501「开发中」，尚未开放业务查询或写入。后续写操作必须在事务内重新校验比赛归属、状态和版本。
 - Day 3 本地验证（2026-09-23）：使用现有 Node.js 24 直接运行 `node node_modules/eslint/bin/eslint.js . --max-warnings=0` 和 `node --test`，ESLint 零警告、40/40 测试通过，`git diff --check` 通过；未安装或配置 npm。
 - Day 3 待办：微信开发者工具返回「需要重新登录（code 10）」，编译预览未完成，开发环境仍需部署本次 `ScheduleManager` 改动；重新登录后补做，不能将本地 mock 测试视为云端联调通过。
-- 下一步 Day 4：实现 `getMyMatches`、`getMatchForEdit`，复用上述权限及 DTO 工具；按契约验证列表排序、归档过滤和编辑原始字段。
+- 冲刺第 1 天（2026-10-02）：实装 `getMyMatches`、`getMatchForEdit` 与 `saveMatch` 新建分支；完成普通/TBD 表单、首页队长发布入口、前后端时间校验与新建重试保护。修改保存、分享和取消仍为受权限保护的 501 占位。
+- 冲刺第 1 天本地验证：ESLint 零警告、58 项测试通过、全部 WXML/WXSS 原生编译通过。云函数部署和完整预览尝试均返回微信登录 code 10，未完成云端/真机验收；随后按用户要求停止代为部署和验证，后续由用户处理。详见 [第 1 天验收说明](docs/a-line-day1.md)。
+- 下一步冲刺第 2 天：实现编辑事务、revision 重置、version 乐观锁与编辑保存。第一天的开发环境部署及云端/真机验收由用户处理。
 
 ## A 线开工前确认
 
