@@ -26,12 +26,12 @@ yaliquankai/
 │       └── status.js         # D2 状态机常量（黄/绿/红/橙/灰 + 角色）
 ├── cloudfunctions/           # 云函数（控制类）
 │   ├── AuthManager/          # C1 身份认证【已完成】
-│   ├── ScheduleManager/      # C2 赛程管理【冲刺第 1 天查询与新建已实装】
+│   ├── ScheduleManager/      # C2 赛程管理【冲刺第 2 天查询、新建与编辑已实装】
 │   └── DutyManager/          # C3 跟场任务【B·已完成：9 action 已实装】
 └── project.config.json
 ```
 
-**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；...`ScheduleManager` 已实装本队赛程查询、编辑原始数据读取和普通/TBD 新建，A 线后续完成修改、取消与分享，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
+**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建与事务编辑，A 线后续完成管理列表、取消与分享，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
 
 ## 环境信息
 
@@ -79,6 +79,13 @@ GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 
 - 2026-10-02 合并修复：从 `b551cbb` 恢复合并提交 `e90e3bb` 丢失的云函数、表单逻辑、首页跳转和赛程测试；在当前合并版本上继续开发。
 - 修复后本地全量检查：ESLint 零警告，69 项测试通过。
 - 部署、云端联调和真机验收按用户要求自行处理；详情见 [第一天交接说明](docs/a-line-day1.md)。
+
+## A 线冲刺第 2 天
+
+- 已完成编辑事务、基准变更重置、version 乐观锁、保存幂等与普通/TBD 编辑回填；仅改项目/对手/需求保留跟场状态。
+- 配套修正 DutyManager：当前确认以 Match 快照为准，重算条件写回，避免旧确认与重算覆盖赛程重置。
+- 本地 ESLint、自动测试及表单 WXML/WXSS 编译通过；未部署，未创建或核验云端唯一索引，未进行真机验收。
+- 今天的实现范围、索引清单与第 3 天任务见 [第二天交接说明](docs/a-line-day2.md)。
 
 ## A 线开工前确认
 

@@ -18,7 +18,7 @@ function toTimestamp(date, time) {
   return actual.date === date && actual.time === time ? timestamp : NaN;
 }
 
-function buildCreatePayload(form, now = Date.now()) {
+function buildCreatePayload(form, now = Date.now(), original = null) {
   const payload = {};
   for (const [field, label] of [["sport", "比赛项目"], ["rival", "对手"], ["location", "比赛地点"]]) {
     if (typeof form[field] !== "string" || !form[field].trim()) throw new Error(`请填写${label}`);
@@ -32,6 +32,13 @@ function buildCreatePayload(form, now = Date.now()) {
   payload.isTbd = form.isTbd;
   payload.matchTime = form.isTbd ? null : toTimestamp(form.startDate, form.startTime);
   payload.endTime = form.isTbd ? null : toTimestamp(form.endDate, form.endTime);
+  // 编辑时保留未改动时间的秒/毫秒，避免仅改文字也触发跟场重置。
+  if (!form.isTbd && original && !original.isTbd) {
+    for (const [field, dateField, timeField] of [["matchTime", "startDate", "startTime"], ["endTime", "endDate", "endTime"]]) {
+      const previous = dateTimeFields(original[field]);
+      if (form[dateField] === previous.date && form[timeField] === previous.time) payload[field] = original[field];
+    }
+  }
   if (!form.isTbd) {
     if (!Number.isFinite(payload.matchTime) || !Number.isFinite(payload.endTime)) {
       throw new Error("请选择完整的开始和结束时间");
