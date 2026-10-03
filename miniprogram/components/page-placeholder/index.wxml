@@ -1,0 +1,5 @@
+<view class="placeholder">
+  <view class="placeholder-mark">雅</view>
+  <text class="placeholder-title">{{title}}</text>
+  <text class="placeholder-desc" wx:if="{{description}}">{{description}}</text>
+</view>

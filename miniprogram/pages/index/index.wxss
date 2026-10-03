@@ -1,0 +1,3 @@
+.captain-entry { margin: 32rpx; padding: 32rpx; background: #fff; border-radius: 20rpx; }
+.entry-title { font-size: 30rpx; color: #333; font-weight: bold; }
+.publish-button { margin-top: 24rpx; background: #7a1733; color: #fff; font-size: 30rpx; border-radius: 12rpx; }

@@ -1,0 +1,23 @@
+.schedule-page { padding: 32rpx; padding-bottom: 64rpx; }
+.panel { background: #fff; border-radius: 20rpx; padding: 32rpx; margin-bottom: 24rpx; }
+.title { font-size: 32rpx; font-weight: bold; color: #333; }
+.hint { font-size: 24rpx; color: #888; line-height: 1.6; margin-top: 12rpx; }
+.field { margin-top: 28rpx; }
+.label { font-size: 27rpx; color: #555; margin-bottom: 14rpx; }
+.field input, .picker-value { border: 2rpx solid #e5e5e5; border-radius: 12rpx; padding: 20rpx; font-size: 28rpx; }
+.field input { height: 44rpx; }
+.time-row { display: flex; }
+.time-row picker { flex: 1; }
+.time-row picker + picker { margin-left: 16rpx; }
+.tbd-row { display: flex; align-items: center; justify-content: space-between; }
+.tbd-row > view { flex: 1; }
+.muted { opacity: 0.45; }
+.demand { display: flex; align-items: center; margin-top: 24rpx; font-size: 28rpx; }
+.demand text { margin-left: 12rpx; }
+.primary { background: #7a1733; color: #fff; border-radius: 12rpx; font-size: 30rpx; margin-top: 24rpx; }
+.primary[disabled] { background: #b88695; color: #fff; }
+.secondary { color: #7a1733; font-size: 28rpx; }
+.notice { color: #777; font-size: 26rpx; line-height: 1.6; margin: 24rpx 0; }
+.error { color: #b42318; font-size: 26rpx; line-height: 1.6; margin-top: 24rpx; }
+.status { font-size: 28rpx; font-weight: bold; margin-top: 16rpx; }
+.success { border-left: 8rpx solid #7a1733; }

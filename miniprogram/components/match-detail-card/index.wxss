@@ -1,0 +1,62 @@
+/* B10 共用比赛详情卡片 */
+.mdc {
+  background: #fff;
+  border-radius: 20rpx;
+  margin-bottom: 20rpx;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+.mdc-open { box-shadow: 0 4rpx 20rpx rgba(0,0,0,0.08); }
+
+/* 摘要行 */
+.mdc-head {
+  display: flex;
+  align-items: center;
+  padding: 28rpx 30rpx;
+}
+.mdc-dot {
+  width: 20rpx; height: 20rpx;
+  border-radius: 10rpx;
+  margin-right: 20rpx;
+  flex-shrink: 0;
+}
+.mdc-summary { flex: 1; display: flex; flex-direction: column; }
+.mdc-vs { font-size: 30rpx; font-weight: 600; }
+.mdc-time { font-size: 24rpx; color: #999; margin-top: 6rpx; }
+.mdc-status { font-size: 26rpx; font-weight: 600; flex-shrink: 0; }
+
+/* 展开区 */
+.mdc-body { padding: 0 30rpx 30rpx; border-top: 2rpx solid #f2f2f2; }
+.mdc-row { display: flex; padding: 14rpx 0; }
+.mdc-label {
+  width: 140rpx;
+  font-size: 26rpx;
+  color: #999;
+  flex-shrink: 0;
+}
+.mdc-value { font-size: 26rpx; color: #333; flex: 1; }
+.mdc-confirmer { color: #33C275; font-weight: 500; }
+.mdc-score { font-size: 32rpx; font-weight: bold; }
+.mdc-link { color: #7a1733; }
+
+.mdc-status-desc {
+  margin-top: 16rpx;
+  padding: 16rpx 20rpx;
+  background: #f8f8f8;
+  border-radius: 12rpx;
+  font-size: 24rpx;
+  color: #666;
+}
+
+/* 操作按钮 */
+.mdc-actions {
+  display: flex;
+  gap: 16rpx;
+  margin-top: 20rpx;
+  padding-top: 20rpx;
+  border-top: 2rpx solid #f2f2f2;
+}
+.mdc-btn { border-radius: 10rpx; font-size: 24rpx; }
+.mdc-btn-danger { background: #E64340; color: #fff; }
+.mdc-btn-warn { background: #FF8C00; color: #fff; }
+.mdc-btn-plain { background: #f2f2f2; color: #666; }
