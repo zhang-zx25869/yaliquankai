@@ -7,24 +7,26 @@
   </view>
   <block wx:else>
     <view wx:if="{{saved}}" class="success panel">
-      <view class="title">赛程已发布</view>
+      <view class="title">{{editing ? '赛程已更新' : '赛程已发布'}}</view>
       <view class="hint">已保存到本队赛程。</view>
       <view class="status" style="color: {{statusColor}}">{{statusLabel}}</view>
     </view>
+    <view wx:if="{{editing && !viewOnly && !saved}}" class="notice">修改时间、地点或时间待定状态后，原跟场确认将被清空，需要经理人重新确认。</view>
+    <view wx:if="{{viewOnly}}" class="notice">当前赛程只读，无法修改。</view>
     <view class="panel">
       <view class="title">{{viewOnly ? '赛程详情' : '比赛信息'}}</view>
-      <view wx:if="{{viewOnly}}" class="status" style="color: {{statusColor}}">{{statusLabel}}</view>
+      <view wx:if="{{editing}}" class="status" style="color: {{statusColor}}">{{statusLabel}}</view>
       <view class="field">
         <view class="label">比赛项目</view>
-        <input value="{{form.sport}}" placeholder="例如：男子篮球" data-field="sport" bindinput="onFieldInput" disabled="{{saving || retryPending || saved || viewOnly}}" maxlength="-1" />
+        <input value="{{form.sport}}" placeholder="例如：男子篮球" data-field="sport" bindinput="onFieldInput" disabled="{{saving || retryPending || saved || viewOnly || conflict}}" maxlength="-1" />
       </view>
       <view class="field">
         <view class="label">对手</view>
-        <input value="{{form.rival}}" placeholder="请输入对方队伍名称" data-field="rival" bindinput="onFieldInput" disabled="{{saving || retryPending || saved || viewOnly}}" maxlength="-1" />
+        <input value="{{form.rival}}" placeholder="请输入对方队伍名称" data-field="rival" bindinput="onFieldInput" disabled="{{saving || retryPending || saved || viewOnly || conflict}}" maxlength="-1" />
       </view>
       <view class="field">
         <view class="label">比赛地点</view>
-        <input value="{{form.location}}" placeholder="例如：综合体育馆" data-field="location" bindinput="onFieldInput" disabled="{{saving || retryPending || saved || viewOnly}}" maxlength="-1" />
+        <input value="{{form.location}}" placeholder="例如：综合体育馆" data-field="location" bindinput="onFieldInput" disabled="{{saving || retryPending || saved || viewOnly || conflict}}" maxlength="-1" />
       </view>
     </view>
     <view class="panel">
@@ -33,16 +35,16 @@
           <view class="title">时间待定（TBD）</view>
           <view class="hint">开启后无需填写开始和结束时间。</view>
         </view>
-        <switch color="#7a1733" checked="{{form.isTbd}}" bindchange="onTbdChange" disabled="{{saving || retryPending || saved || viewOnly}}" />
+        <switch color="#7a1733" checked="{{form.isTbd}}" bindchange="onTbdChange" disabled="{{saving || retryPending || saved || viewOnly || conflict}}" />
       </view>
       <view wx:if="{{form.isTbd}}" class="notice">比赛时间待定，确定时间后再更新赛程。</view>
       <view class="field {{form.isTbd ? 'muted' : ''}}">
         <view class="label">开始时间（北京时间）</view>
         <view class="time-row">
-          <picker mode="date" value="{{form.startDate}}" start="{{minDate}}" data-field="startDate" bindchange="onFieldInput" disabled="{{form.isTbd || saving || retryPending || saved || viewOnly}}">
+          <picker mode="date" value="{{form.startDate}}" start="{{minDate}}" data-field="startDate" bindchange="onFieldInput" disabled="{{form.isTbd || saving || retryPending || saved || viewOnly || conflict}}">
             <view class="picker-value">{{form.startDate || '选择日期'}}</view>
           </picker>
-          <picker mode="time" value="{{form.startTime}}" data-field="startTime" bindchange="onFieldInput" disabled="{{form.isTbd || saving || retryPending || saved || viewOnly}}">
+          <picker mode="time" value="{{form.startTime}}" data-field="startTime" bindchange="onFieldInput" disabled="{{form.isTbd || saving || retryPending || saved || viewOnly || conflict}}">
             <view class="picker-value">{{form.startTime || '选择时间'}}</view>
           </picker>
         </view>
@@ -50,10 +52,10 @@
       <view class="field {{form.isTbd ? 'muted' : ''}}">
         <view class="label">结束时间（北京时间）</view>
         <view class="time-row">
-          <picker mode="date" value="{{form.endDate}}" start="{{form.startDate || minDate}}" data-field="endDate" bindchange="onFieldInput" disabled="{{form.isTbd || saving || retryPending || saved || viewOnly}}">
+          <picker mode="date" value="{{form.endDate}}" start="{{form.startDate || minDate}}" data-field="endDate" bindchange="onFieldInput" disabled="{{form.isTbd || saving || retryPending || saved || viewOnly || conflict}}">
             <view class="picker-value">{{form.endDate || '选择日期'}}</view>
           </picker>
-          <picker mode="time" value="{{form.endTime}}" data-field="endTime" bindchange="onFieldInput" disabled="{{form.isTbd || saving || retryPending || saved || viewOnly}}">
+          <picker mode="time" value="{{form.endTime}}" data-field="endTime" bindchange="onFieldInput" disabled="{{form.isTbd || saving || retryPending || saved || viewOnly || conflict}}">
             <view class="picker-value">{{form.endTime || '选择时间'}}</view>
           </picker>
         </view>
@@ -64,15 +66,16 @@
       <view class="hint">可多选，无需求可以不勾选。</view>
       <checkbox-group bindchange="onDemandsChange">
         <label wx:for="{{demandOptions}}" wx:key="value" class="demand">
-          <checkbox value="{{item.value}}" checked="{{item.checked}}" color="#7a1733" disabled="{{saving || retryPending || saved || viewOnly}}" />
+          <checkbox value="{{item.value}}" checked="{{item.checked}}" color="#7a1733" disabled="{{saving || retryPending || saved || viewOnly || conflict}}" />
           <text>{{item.value}}</text>
         </label>
       </checkbox-group>
     </view>
-    <view wx:if="{{retryPending}}" class="notice">发布结果暂未确认。请重试同一次发布，避免重复创建赛程。</view>
-    <button wx:if="{{!viewOnly && !saved}}" class="primary" bindtap="onSave" loading="{{saving}}" disabled="{{saving}}">{{saving ? '正在发布…' : retryPending ? '重试发布' : '发布赛程'}}</button>
-    <button wx:if="{{saved}}" class="primary" bindtap="onCreateAnother">再发布一场</button>
+    <view wx:if="{{retryPending}}" class="notice">保存结果暂未确认。请重试同一次保存。</view>
+    <button wx:if="{{!viewOnly && !saved}}" class="primary" bindtap="onSave" loading="{{saving}}" disabled="{{saving || conflict}}">{{saving ? '正在保存…' : retryPending ? '重试保存' : editing ? '保存修改' : '发布赛程'}}</button>
+    <button wx:if="{{saved && !editing}}" class="primary" bindtap="onCreateAnother">再发布一场</button>
+    <button wx:if="{{saved && editing}}" class="primary" bindtap="onReload">重新加载并继续编辑</button>
   </block>
   <view wx:if="{{errorText}}" class="error">{{errorText}}</view>
-  <button wx:if="{{ready && authorized && errorText && viewOnly}}" class="secondary" bindtap="onShow">重新加载</button>
+  <button wx:if="{{ready && authorized && errorText && editing && !retryPending && !saving}}" class="secondary" bindtap="onReload">重新加载最新赛程</button>
 </view>

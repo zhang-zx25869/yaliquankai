@@ -19,6 +19,7 @@ function loadPage(relativePath, options = {}) {
   const calls = [];
   const toasts = [];
   const routes = [];
+  const modals = [];
   const context = {
     Date,
     Page(value) { definition = value; },
@@ -37,6 +38,7 @@ function loadPage(relativePath, options = {}) {
     wx: {
       setNavigationBarTitle() {},
       showToast(value) { toasts.push(value); },
+      showModal(value) { modals.push(value); },
       navigateTo(value) { routes.push(value); },
       switchTab(value) { routes.push(value); },
     },
@@ -51,7 +53,7 @@ function loadPage(relativePath, options = {}) {
       target[parts.at(-1)] = value;
     }
   };
-  return { page, calls, toasts, routes, setUser(value) { user = value; } };
+  return { page, calls, toasts, routes, modals, setUser(value) { user = value; } };
 }
 
 test("form dates use Shanghai time and reject calendar rollovers", () => {
@@ -173,13 +175,13 @@ test("unbound users and changed identities cannot submit or use the home captain
   assert.equal(home.page.data.isCaptain, false);
 });
 
-test("read-only detail uses getMatchForEdit and cannot accidentally create a new match", async (t) => {
+test("terminal detail uses getMatchForEdit and cannot accidentally create a new match", async (t) => {
   t.mock.method(Date, "now", () => NOW);
   const { page, calls } = loadPage("schedule-form", {
     async call() {
       return { match: {
         _id: "match-1", sport: "篮球", rival: "对手队", location: "体育馆", demands: [],
-        isTbd: true, matchTime: null, endTime: null, cellStatus: "tbd", version: 1,
+        isTbd: true, matchTime: null, endTime: null, cellStatus: "cancelled", version: 1,
       } };
     },
   });
@@ -187,7 +189,7 @@ test("read-only detail uses getMatchForEdit and cannot accidentally create a new
   await page.onShow();
   assert.equal(calls[0].payload.action, "getMatchForEdit");
   assert.equal(page.data.form.isTbd, true);
-  assert.equal(page.data.statusLabel, "时间待定");
+  assert.equal(page.data.viewOnly, true);
   await page.onSave();
   assert.equal(calls.length, 1);
 });
@@ -223,4 +225,136 @@ test("an incomplete success response preserves the original request for a safe r
   await page.onSave();
   assert.deepEqual(calls[1].payload, calls[0].payload);
   assert.equal(page.data.saved, true);
+});
+
+const editDTO = (overrides = {}) => ({
+  _id: "match-1", sport: "篮球", rival: "对手队", location: "体育馆", demands: ["饮用水"],
+  isTbd: false, matchTime: toTimestamp("2026-10-05", "14:00"), endTime: toTimestamp("2026-10-05", "16:00"),
+  cellStatus: "confirmed", version: 5, isArchived: false, ...overrides,
+});
+
+test("editable DTO populates versioned saves, preserves seconds, and reloads after success", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let current = editDTO({ matchTime: editDTO().matchTime + 12345, endTime: editDTO().endTime + 45678, demands: ["饮用水", "自定义需求"] });
+  const { page, calls, toasts, modals } = loadPage("schedule-form", {
+    async call(_name, payload) {
+      if (payload.action === "getMatchForEdit") return { match: structuredClone(current) };
+      current = { ...current, ...payload, version: payload.version + 1 };
+      return { matchId: "match-1", cellStatus: "confirmed", version: current.version };
+    },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  assert.equal(page.data.viewOnly, false);
+  assert.ok(page.data.demandOptions.some((item) => item.value === "自定义需求" && item.checked));
+  page.onFieldInput({ currentTarget: { dataset: { field: "rival" } }, detail: { value: "新对手" } });
+  await page.onShow();
+  assert.equal(page.data.form.rival, "新对手");
+  assert.equal(calls.length, 1);
+  await page.onSave();
+  assert.equal(calls[1].payload.matchId, "match-1");
+  assert.equal(calls[1].payload.version, 5);
+  assert.equal(calls[1].payload.matchTime, editDTO().matchTime + 12345);
+  assert.equal(calls[1].payload.endTime, editDTO().endTime + 45678);
+  assert.equal(toasts.at(-1).title, "修改成功");
+  assert.equal(modals.length, 0);
+  page.onCreateAnother();
+  assert.equal(page.data.saved, true);
+  await page.onReload();
+  assert.equal(page.data.saved, false);
+  page.onDemandsChange({ detail: { value: ["摄影"] } });
+  await page.onSave();
+  assert.equal(calls.at(-1).payload.version, 6);
+  assert.equal(modals.length, 1);
+  assert.ok(modals[0].content.includes("私聊"));
+});
+
+test("version conflicts keep the draft locked until an explicit refresh loads the current version", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let version = 5;
+  const { page, calls } = loadPage("schedule-form", {
+    async call(_name, payload) {
+      if (payload.action === "getMatchForEdit") return { match: editDTO({ version }) };
+      if (payload.version !== version) throw { code: 409, message: "赛程已被修改，请刷新后重试" };
+      return { matchId: "match-1", cellStatus: "confirmed", version: version + 1 };
+    },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  page.onFieldInput({ currentTarget: { dataset: { field: "rival" } }, detail: { value: "草稿" } });
+  version = 6;
+  await page.onSave();
+  assert.equal(page.data.conflict, true);
+  assert.equal(page.data.form.rival, "草稿");
+  await page.onSave();
+  assert.equal(calls.length, 2);
+  await page.onReload();
+  assert.equal(page.data.conflict, false);
+  assert.equal(page.data.form.rival, "对手队");
+  await page.onSave();
+  assert.equal(calls.at(-1).payload.version, 6);
+  assert.notEqual(calls[1].payload.requestId, calls.at(-1).payload.requestId);
+});
+
+test("edit weak-network retries survive hide/show and cannot be replaced by refresh", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let saves = 0;
+  const { page, calls } = loadPage("schedule-form", {
+    async call(_name, payload) {
+      if (payload.action === "getMatchForEdit") return { match: editDTO() };
+      saves += 1;
+      if (saves === 1) throw { code: 500, message: "响应丢失" };
+      return { matchId: "match-1", cellStatus: "pending", version: 6 };
+    },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  page.onFieldInput({ currentTarget: { dataset: { field: "location" } }, detail: { value: "新场馆" } });
+  await page.onSave();
+  await page.onShow();
+  await page.onReload();
+  assert.equal(calls.length, 2);
+  assert.equal(page.data.retryPending, true);
+  assert.equal(page.data.form.location, "新场馆");
+  await page.onSave();
+  assert.deepEqual(calls[1].payload, calls[2].payload);
+  assert.equal(page.data.saved, true);
+});
+
+test("archived, ended and suspended matches and failed edit loads cannot submit", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const scenarios = [
+    { isArchived: true }, { cellStatus: "settle" }, { cellStatus: "cancelled" },
+    { cellStatus: "dutyCancelled" }, { matchTime: NOW }, { endTime: NOW - 1 }, null,
+  ];
+  for (const scenario of scenarios) {
+    const { page, calls } = loadPage("schedule-form", {
+      async call() {
+        if (!scenario) throw { code: 500, message: "读取失败" };
+        return { match: editDTO(scenario) };
+      },
+    });
+    page.onLoad({ matchId: "match-1" });
+    await page.onShow();
+    assert.equal(page.data.viewOnly, true);
+    await page.onSave();
+    assert.equal(calls.length, 1);
+  }
+});
+
+test("TBD edits send null times and demand reordering does not trigger a private-message reminder", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const { page, calls, modals } = loadPage("schedule-form", {
+    async call(_name, payload) {
+      if (payload.action === "getMatchForEdit") return { match: editDTO({ isTbd: true, matchTime: null, endTime: null, cellStatus: "tbd", demands: ["摄影", "饮用水"] }) };
+      return { matchId: "match-1", cellStatus: "tbd", version: 6 };
+    },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  page.onDemandsChange({ detail: { value: ["饮用水", "摄影"] } });
+  await page.onSave();
+  assert.equal(calls.at(-1).payload.matchTime, null);
+  assert.equal(calls.at(-1).payload.endTime, null);
+  assert.equal(modals.length, 0);
 });

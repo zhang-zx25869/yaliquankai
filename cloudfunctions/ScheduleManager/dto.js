@@ -51,6 +51,7 @@ function toScheduleEditDTO(match) {
     endTime: match.isTbd === true ? null : match.endTime,
     location: match.location,
     demands: copyDemands(match.demands),
+    isArchived: match.isArchived === true,
     isTbd: match.isTbd === true,
     cellStatus: match.cellStatus,
     version: match.version,

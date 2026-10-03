@@ -33,7 +33,7 @@ const summaryFields = [
 ];
 const editFields = [
   "_id", "teamId", "teamName", "sport", "rival", "matchTime", "endTime",
-  "location", "demands", "isTbd", "cellStatus", "version",
+  "location", "demands", "isTbd", "cellStatus", "version", "isArchived",
 ];
 const publicFields = [
   "_id", "teamId", "teamName", "sport", "rival", "matchTime", "endTime",

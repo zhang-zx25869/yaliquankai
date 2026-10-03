@@ -39,6 +39,7 @@ function loadScheduleManager(options = {}) {
     UserCollection: options.users ?? [captain()],
     TeamCollection: options.teams ?? [team()],
     MatchCollection: options.matches ?? [match()],
+    DutyRecordCollection: options.duties ?? [],
   };
   let transactionQueue = Promise.resolve();
   const database = {
@@ -53,6 +54,7 @@ function loadScheduleManager(options = {}) {
             limit(value) { limit = value; return reference; },
             skip(value) { offset = value; return reference; },
             orderBy(field, direction) { order.push({ field, direction }); return reference; },
+            async count() { return { total: (await reference.get()).data.length }; },
             async get() {
               queries.push({ name, query, limit });
               if (options.databaseError === name) throw options.databaseException || new Error("database unavailable");
@@ -82,6 +84,13 @@ function loadScheduleManager(options = {}) {
               doc(id) {
                 return {
                   async get() { return { data: draft[name].find((item) => item._id === id) || null }; },
+                  async update({ data }) {
+                    if (options.failUpdate) throw new Error("simulated update failure");
+                    const record = draft[name].find((item) => item._id === id);
+                    assert.ok(record);
+                    Object.assign(record, structuredClone(data));
+                    return { stats: { updated: 1 } };
+                  },
                 };
               },
               async add({ data }) {
@@ -140,9 +149,9 @@ async function invoke(schedule, event) {
   }
 }
 
-test("implemented reads work while edit writes, share and cancellation remain guarded placeholders", async () => {
+test("implemented reads work while share and cancellation remain guarded placeholders", async () => {
   const schedule = loadScheduleManager();
-  for (const action of ["getShareCard", "cancelMatch", "saveMatch"]) {
+  for (const action of ["getShareCard", "cancelMatch"]) {
     assert.deepEqual(await invoke(schedule, { action, matchId: "match-1" }), { code: 501, message: `${action} 开发中` });
   }
   for (const action of ["getMyMatches", "getMatchForEdit"]) {
@@ -494,4 +503,155 @@ test("ordinary and TBD form payloads are accepted by the real ScheduleManager wi
     assert.equal(result.data.cellStatus, isTbd ? "tbd" : "pending");
   }
   assert.equal(schedule.collections.MatchCollection.length, 2);
+});
+
+const editableMatch = (overrides = {}) => match({
+  matchTime: NOW + 72 * HOUR, endTime: NOW + 74 * HOUR,
+  dutyRevision: 3, version: 5, cellStatus: "confirmed",
+  confirmerOpenid: "manager-1", confirmerNickname: "经理人甲", confirmerType: "confirm", ...overrides,
+});
+const validEdit = (overrides = {}) => validCreate({ matchId: "match-1", version: 5, demands: ["饮用水"], ...overrides });
+
+test("basis edits clear every confirmation field, retain history and advance revision/version once", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const changes = [
+    { location: "新场馆" }, { matchTime: NOW + 73 * HOUR },
+    { endTime: NOW + 75 * HOUR }, { isTbd: true },
+  ];
+  for (const change of changes) {
+    const duty = { _id: "duty-1", matchId: "match-1", openid: "manager-1", type: "confirm" };
+    const schedule = loadScheduleManager({ matches: [editableMatch()], duties: [duty] });
+    const response = await invoke(schedule, validEdit(change));
+    assert.equal(response.code, 0);
+    const stored = schedule.collections.MatchCollection[0];
+    assert.equal(stored.dutyRevision, 4);
+    assert.equal(stored.version, 6);
+    assert.equal(stored.cellStatus, change.isTbd ? "tbd" : "pending");
+    for (const field of ["confirmerOpenid", "confirmerNickname", "confirmerType"]) assert.equal(stored[field], "");
+    assert.deepEqual(schedule.collections.DutyRecordCollection, [duty]);
+    assert.equal(stored.captainOpenid, "previous-captain");
+    assert.equal(stored.teamId, "team-a");
+    assert.equal(stored.lastSaveOpenid, "openid-captain");
+    assert.equal(response.data.version, 6);
+  }
+});
+
+test("text and demand edits preserve confirmation, status and revision including concurrent duty changes", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  for (const state of ["confirmed", "pending", "help", "tbd"]) {
+    const original = editableMatch({ cellStatus: state, ...(state === "tbd" ? { isTbd: true, matchTime: null, endTime: null } : {}) });
+    const schedule = loadScheduleManager({ matches: [original] });
+    const response = await invoke(schedule, validEdit({ sport: "排球", rival: "新对手", demands: ["摄影"], isTbd: original.isTbd }));
+    assert.equal(response.code, 0);
+    const saved = schedule.collections.MatchCollection[0];
+    assert.equal(saved.confirmerOpenid, "manager-1");
+    assert.equal(saved.dutyRevision, 3);
+    assert.equal(saved.cellStatus, state);
+  }
+  const schedule = loadScheduleManager({ matches: [editableMatch()], beforeTransaction(state) {
+    Object.assign(state.MatchCollection[0], { confirmerOpenid: "new-manager", cellStatus: "confirmed" });
+  } });
+  await invoke(schedule, validEdit({ rival: "新对手" }));
+  assert.equal(schedule.collections.MatchCollection[0].confirmerOpenid, "new-manager");
+});
+
+test("TBD transitions normalize times and reset statuses at the exact 48-hour boundary", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  for (const [distance, expected] of [[48 * HOUR, "pending"], [48 * HOUR - 1, "help"]]) {
+    for (const wasTbd of [false, true]) {
+      const original = editableMatch(wasTbd ? { isTbd: true, cellStatus: "tbd", matchTime: null, endTime: null } : {});
+      const schedule = loadScheduleManager({ matches: [original] });
+      const result = await invoke(schedule, validEdit({ matchTime: NOW + distance }));
+      assert.equal(result.data.cellStatus, expected);
+    }
+  }
+  const schedule = loadScheduleManager({ matches: [editableMatch()] });
+  await invoke(schedule, validEdit({ isTbd: true, matchTime: "ignored", endTime: -1 }));
+  assert.equal(schedule.collections.MatchCollection[0].matchTime, null);
+  assert.equal(schedule.collections.MatchCollection[0].endTime, null);
+});
+
+test("reset uses the B-line all-declined rule while zero managers does not force red", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  for (const [total, declined, expected] of [[0, 0, "pending"], [2, 1, "pending"], [2, 2, "help"]]) {
+    const schedule = loadScheduleManager({
+      matches: [editableMatch()],
+      users: [captain(), ...Array.from({ length: total }, (_, i) => captain({ _id: `member-${i}`, openid: `manager-${i}`, role: "member" }))],
+      duties: Array.from({ length: declined }, (_, i) => ({ _id: `duty-${i}`, matchId: "match-1", openid: `manager-${i}`, type: "decline" })),
+    });
+    assert.equal((await invoke(schedule, validEdit({ location: "新场馆" }))).data.cellStatus, expected);
+  }
+});
+
+test("invalid edits, stale versions, forbidden states and already-started matches never write", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const cases = [
+    ...[undefined, null, 0, -1, "5", 1.5].map((version) => ({ event: { version }, code: 400 })),
+    { event: { version: 4 }, code: 409 }, { event: { requestId: " " }, code: 400 },
+    { event: { location: " " }, code: 400 }, { event: { matchTime: NOW }, code: 400 },
+    { event: { endTime: NOW + HOUR }, code: 400 }, { event: { demands: [42] }, code: 400 },
+    ...["settle", "cancelled", "dutyCancelled", "invalid"].map((cellStatus) => ({ match: { cellStatus }, code: 409 })),
+    { match: { isArchived: true }, code: 409 },
+    { match: { matchTime: NOW }, code: 409 }, { match: { endTime: NOW - 1 }, code: 409 },
+  ];
+  for (const scenario of cases) {
+    const original = editableMatch(scenario.match);
+    const schedule = loadScheduleManager({ matches: [original] });
+    const result = await invoke(schedule, validEdit(scenario.event));
+    assert.equal(result.code, scenario.code, JSON.stringify(scenario));
+    assert.deepEqual(schedule.collections.MatchCollection, [original]);
+  }
+});
+
+test("identical concurrent retries return the saved result and cannot increment twice", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const schedule = loadScheduleManager({ matches: [editableMatch()] });
+  const event = validEdit({ location: "新场馆" });
+  const results = await Promise.all(Array.from({ length: 5 }, () => invoke(schedule, event)));
+  assert.ok(results.every((value) => value.code === 0));
+  assert.ok(results.every((value) => value.data.version === 6));
+  assert.equal(schedule.collections.MatchCollection[0].dutyRevision, 4);
+  Object.assign(schedule.collections.MatchCollection[0], { cellStatus: "settle", isArchived: true });
+  t.mock.method(Date, "now", () => NOW + 100 * HOUR);
+  assert.deepEqual(await invoke(schedule, event), results[0]);
+  assert.equal(schedule.collections.MatchCollection[0].cellStatus, "settle");
+});
+
+test("different concurrent edits with the same version have exactly one winner", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const schedule = loadScheduleManager({ matches: [editableMatch()] });
+  const results = await Promise.all(["one", "two"].map((requestId) => invoke(schedule, validEdit({ requestId, location: requestId }))));
+  assert.deepEqual(results.map((value) => value.code).sort(), [0, 409]);
+  assert.equal(schedule.collections.MatchCollection[0].version, 6);
+});
+
+test("edit transactions recheck identity, ownership, version and status and roll back SDK failures", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  for (const [change, expected] of [
+    [(s) => { s.UserCollection[0].role = "member"; }, 403],
+    [(s) => { s.UserCollection[0].openid = "other"; }, 401],
+    [(s) => { s.TeamCollection[0].enabled = false; }, 403],
+    [(s) => { s.MatchCollection[0].teamId = "other"; }, 403],
+    [(s) => { s.MatchCollection[0].version += 1; }, 409],
+    [(s) => { s.MatchCollection[0].cellStatus = "settle"; }, 409],
+    [(s) => { s.MatchCollection.length = 0; }, 404],
+  ]) {
+    const schedule = loadScheduleManager({ matches: [editableMatch()], beforeTransaction: change });
+    assert.equal((await invoke(schedule, validEdit({ location: "新场馆" }))).code, expected);
+    assert.notEqual(schedule.collections.MatchCollection[0]?.location, "新场馆");
+  }
+  const schedule = loadScheduleManager({ matches: [editableMatch()], failUpdate: true });
+  assert.equal((await invoke(schedule, validEdit({ location: "新场馆" }))).code, 500);
+  assert.equal(schedule.collections.MatchCollection[0].version, 5);
+  assert.equal(schedule.collections.MatchCollection[0].confirmerOpenid, "manager-1");
+});
+
+test("another captain cannot replay a saved request and replay metadata remains private", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const schedule = loadScheduleManager({ matches: [editableMatch()] });
+  await invoke(schedule, validEdit());
+  const dto = await invoke(schedule, { action: "getMatchForEdit", matchId: "match-1" });
+  assert.ok(!JSON.stringify(dto).includes("lastSave"));
+  schedule.collections.MatchCollection[0].lastSaveOpenid = "another-captain";
+  assert.equal((await invoke(schedule, validEdit())).code, 409);
 });

@@ -188,10 +188,13 @@ async function countTeamManager(teamId) {
 }
 
 // 查本人对某场比赛的表态类型（myStatus 用）：none | confirmed | declined
-// 幂等由写入侧保证：一人一场至多一条有效表态记录（upsert 覆盖），直接查即可
-// assign（运营者指派）与 confirm/rescue 同属「已承担本场跟场」，一并映射为 myStatus=confirmed
-async function getMyLatestType(matchId, openid) {
-  if(!matchId || !openid) return "none";
+// 当前确认以 Match 快照为准，decline 仍读取一人一场的 upsert 留痕。
+// assign（运营者指派）与 confirm/rescue 一样，快照仍指向本人时为 confirmed。
+async function getMyLatestType(match, openid) {
+  if (!match || !openid) return "none";
+  // 确认是否仍有效只看当前快照；赛程重置后旧 confirm/rescue/assign 仅作留痕。
+  if (match.confirmerOpenid === openid) return "confirmed";
+  const matchId = match._id;
   const res = await db.collection("DutyRecordCollection")
   .where({ matchId, openid })
   .orderBy("updatedAt", "desc")
@@ -199,7 +202,7 @@ async function getMyLatestType(matchId, openid) {
   .get();
   const rec = res.data[0];
   if(!rec) return "none";
-  if (rec.type === DUTY_TYPE.CONFIRM || rec.type === DUTY_TYPE.RESCUE || rec.type === DUTY_TYPE.ASSIGN) return "confirmed";
+  // 已清空或已转给别人的历史确认不能恢复为当前确认。
   if (rec.type === DUTY_TYPE.DECLINE) return "declined";
   return "none";
 }
@@ -222,7 +225,7 @@ async function countDeclinedUsers(matchId) {
 async function getRespondPage(openid, event) {
   const user = await getUserByOpenid(openid);
   if (!user) return fail(401, "您现在是游客，请先绑定身份");
-  
+
   const { matchId } = event;
   const { match, error } = await getMatchById(matchId);
   if(error) return error;
@@ -235,7 +238,7 @@ async function getRespondPage(openid, event) {
     match.cellStatus = await recalcCellStatus(match);
   }
 
-  const myStatus = await getMyLatestType(matchId, openid);
+  const myStatus = await getMyLatestType(match, openid);
   const stats = await buildTeamStats(match.teamId);
   const total = await countTeamManager(match.teamId);
   const declined = await countDeclinedUsers(matchId);
@@ -256,7 +259,7 @@ async function getRescuePage(openid, event) {
   const user = await getUserByOpenid(openid);
   const guard = requireMember(user);
   if (guard) return guard;
-  
+
   const { matchId } = event;
   const { match, error } = await getMatchById(matchId);
   if(error) return error;
@@ -265,7 +268,7 @@ async function getRescuePage(openid, event) {
     match.cellStatus = await recalcCellStatus(match);
   }
 
-  const myStatus = await getMyLatestType(matchId, openid);
+  const myStatus = await getMyLatestType(match, openid);
   return ok({ match: toDTO(match), myStatus });
 }
 
@@ -422,7 +425,7 @@ async function declineDuty(openid, event) {
   }
 
   // 幂等：本人已是 declined 则直接返回当前池状态，不重复写
-  const myType = await getMyLatestType(match._id, openid);
+  const myType = await getMyLatestType(match, openid);
   if(myType !== "declined") {
     await upsertDutyRecord(match, user, DUTY_TYPE.DECLINE);
   }
@@ -596,48 +599,33 @@ async function getMyDuties(openid, _event) {
 //   return 'pending'                                     // 其余 → 黄
 // tbd / cancelled / dutyCancelled / settle 为挂起或终态，不参与重算（调用方保证不进本函数）
 async function recalcCellStatus(match) {
-  const now = Date.now();
-
-  // 以库内实时 confirmerOpenid 为准，不信任调用方传入的 match 快照：
-  // 写路径（confirm/rescue/cancel）传入的快照可能已过时，若直接用其重算并 writeRecalced，
-  // 极端并发下会覆盖他人刚抢注的 confirmed（如 cancel 撤确认后他人恰好接单）。
-  // 重读一次取真实 confirmer，颜色裁决与库内实际一致；读时重算路径同样受益。
-  const fresh = await getMatchById(match._id);
-  const confirmerOpenid = (fresh.match && fresh.match.confirmerOpenid)
-    || (match.confirmerOpenid || ""); // 兜底：重读失败时退回调用方值（正常不会发生）
-
-  // 规则1：有人确认 → 绿
-  if (confirmerOpenid) {
-    await writeRecalced(match._id, CELL_STATUS.CONFIRMED)
-    return CELL_STATUS.CONFIRMED;
+  // 编辑事务可能已清空确认或切到 TBD，不能再用调用方旧快照兜底。
+  const result = await db.collection("MatchCollection").doc(match._id).get();
+  const fresh = result.data;
+  if (!fresh) throw new Error("比赛不存在");
+  if (fresh.isArchived || isTerminalStatus(fresh.cellStatus)) return fresh.cellStatus;
+  let cellStatus;
+  if (fresh.confirmerOpenid) {
+    cellStatus = CELL_STATUS.CONFIRMED;
+  } else {
+    const declined = await countDeclinedUsers(fresh._id);
+    const total = await countTeamManager(fresh.teamId);
+    cellStatus = (total > 0 && declined >= total)
+      || fresh.matchTime - Date.now() < HOURS.FORCE_RED * 3600 * 1000
+      ? CELL_STATUS.HELP : CELL_STATUS.PENDING;
   }
-
-  const declined = await countDeclinedUsers(match._id);
-  const total = await countTeamManager(match.teamId);
-
-  // 规则2：全员没空 → 红
-  if(total > 0 && declined >= total) {
-    await writeRecalced(match._id, CELL_STATUS.HELP);
-    return CELL_STATUS.HELP;
+  // 聚合期间若编辑、取消或抢单改变了记录，禁止旧重算覆盖新状态。
+  const guard = { _id: fresh._id };
+  for (const field of ["version", "dutyRevision", "cellStatus", "confirmerOpenid", "updatedAt", "isArchived"]) {
+    guard[field] = fresh[field] === undefined ? _.exists(false) : fresh[field];
   }
-
-  // 规则3：临期无人确认 → 红
-  if(match.matchTime - now < HOURS.FORCE_RED * 3600 * 1000) {
-    await writeRecalced(match._id, CELL_STATUS.HELP);
-    return CELL_STATUS.HELP;
-  }
-
-  // 其余 → 黄
-  await writeRecalced(match._id, CELL_STATUS.PENDING);
-  return CELL_STATUS.PENDING;
-}
-
-// 重算结果写回 MatchCollection：更新 cellStatus + updatedAt
-// （读时重算与写后重算共用，保证库内状态与裁决结果一致）
-async function writeRecalced(matchId, cellStatus) {
-  await db.collection("MatchCollection").doc(matchId).update({
+  const written = await db.collection("MatchCollection").where(guard).update({
     data: { cellStatus, updatedAt: Date.now() },
-  })
+  });
+  if (written.stats && written.stats.updated > 0) return cellStatus;
+  const latest = await db.collection("MatchCollection").doc(match._id).get();
+  if (!latest.data) throw new Error("比赛不存在");
+  return latest.data.cellStatus;
 }
 
 // 表态留痕（upsert）：一人一场至多一条有效记录——

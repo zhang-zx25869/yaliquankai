@@ -1,4 +1,4 @@
-// 赛程管理：队长查询、编辑原始数据与新建；修改、分享和取消按后续排期实现。
+// 赛程管理：队长查询、新建与事务编辑；分享和取消按后续排期实现。
 const cloud = require("wx-server-sdk");
 const { createHash } = require("crypto");
 const { toScheduleSummaryDTO, toScheduleEditDTO } = require("./dto");
@@ -163,6 +163,79 @@ async function createMatch(openid, identity, event) {
   }
 }
 
+const EDITABLE_STATUSES = [CELL_STATUS.PENDING, CELL_STATUS.CONFIRMED, CELL_STATUS.HELP, CELL_STATUS.TBD];
+const basisChanged = (match, fields) => ["matchTime", "endTime", "location", "isTbd"]
+  .some((field) => match[field] !== fields[field]);
+
+// 与 B 线统一规则一致；聚合在事务外读取，避免使用事务不支持的 where/count。
+// revision 只记录赛程基准变更，不对 B 线的一人一场 upsert 留痕分代。
+function recalcCellStatus(match, total, declined, now) {
+  if (match.isTbd) return CELL_STATUS.TBD;
+  if (match.confirmerOpenid) return CELL_STATUS.CONFIRMED;
+  if (total > 0 && declined >= total) return CELL_STATUS.HELP;
+  return match.matchTime - now < FORCE_RED_MS ? CELL_STATUS.HELP : CELL_STATUS.PENDING;
+}
+
+async function updateMatch(openid, identity, event, original) {
+  if (!isNonemptyString(event.requestId)) throw new ScheduleError(400, "缺少保存请求标识，请重试");
+  const requestId = event.requestId.trim();
+  let total = 0;
+  let declined = 0;
+  if (original.lastRequestId !== requestId && !event.isTbd && basisChanged(original, event)) {
+    const [members, declines] = await Promise.all([
+      db.collection("UserCollection").where({ teamId: identity.team._id, role: ROLE.MEMBER }).count(),
+      db.collection("DutyRecordCollection").where({ matchId: original._id, type: "decline" }).count(),
+    ]);
+    total = members.total;
+    declined = declines.total;
+  }
+  return db.runTransaction(async (transaction) => {
+    const user = documentData(await transaction.collection("UserCollection").doc(identity.user._id).get());
+    const team = documentData(await transaction.collection("TeamCollection").doc(identity.team._id).get());
+    if (!user || user.openid !== openid) throw new ScheduleError(401, "身份已变化，请重新登录");
+    checkCaptainTeam(user, team);
+    const ref = transaction.collection("MatchCollection").doc(original._id);
+    const match = documentData(await ref.get());
+    if (!match) throw new ScheduleError(404, "比赛不存在");
+    if (match.teamId !== team._id) throw new ScheduleError(403, "只能管理本队赛程");
+    // 必须先识别已提交请求；响应丢失后携旧 version 重试仍返回原结果。
+    if (match.lastRequestId === requestId) {
+      if (match.lastSaveOpenid !== openid || !match.lastSaveResult) {
+        throw new ScheduleError(409, "保存请求已被使用，请刷新后重新提交");
+      }
+      const { matchId, cellStatus, version } = match.lastSaveResult;
+      return ok({ matchId, cellStatus, version });
+    }
+    if (!Number.isSafeInteger(event.version) || event.version < 1) {
+      throw new ScheduleError(400, "修改赛程必须携带有效版本号");
+    }
+    if (match.version !== event.version) throw new ScheduleError(409, "赛程已被修改，请刷新后重试");
+    const now = Date.now();
+    if (match.isArchived || !EDITABLE_STATUSES.includes(match.cellStatus)) {
+      throw new ScheduleError(409, "该比赛当前状态不允许修改");
+    }
+    if (!match.isTbd && ((Number.isFinite(match.matchTime) && match.matchTime <= now)
+      || (Number.isFinite(match.endTime) && match.endTime <= now))) {
+      throw new ScheduleError(409, "比赛已开始或结束，无法修改");
+    }
+    const fields = validateNewMatch(event, now);
+    const reset = basisChanged(match, fields);
+    const patch = { ...fields, version: match.version + 1, lastRequestId: requestId, updatedAt: now };
+    if (reset) {
+      patch.dutyRevision = (Number.isSafeInteger(match.dutyRevision) ? match.dutyRevision : 1) + 1;
+      patch.confirmerOpenid = "";
+      patch.confirmerNickname = "";
+      patch.confirmerType = "";
+      patch.cellStatus = recalcCellStatus({ ...match, ...fields, confirmerOpenid: "" }, total, declined, now);
+    }
+    const result = { matchId: match._id, cellStatus: patch.cellStatus || match.cellStatus, version: patch.version };
+    patch.lastSaveOpenid = openid;
+    patch.lastSaveResult = result;
+    await ref.update({ data: patch });
+    return ok(result);
+  });
+}
+
 exports.main = async (event = {}) => {
   try {
     const action = event && event.action;
@@ -178,8 +251,8 @@ exports.main = async (event = {}) => {
         return ok({ match: toScheduleEditDTO(await requireOwnMatch(team._id, event.matchId)) });
       case ACTION.SAVE_MATCH:
         if (event.matchId !== undefined) {
-          await requireOwnMatch(team._id, event.matchId);
-          return notImplemented(action);
+          const match = await requireOwnMatch(team._id, event.matchId);
+          return await updateMatch(OPENID, identity, event, match);
         }
         return await createMatch(OPENID, identity, event);
       case ACTION.GET_SHARE_CARD:
