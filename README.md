@@ -16,7 +16,8 @@ yaliquankai/
 │   │   ├── respond/          # B6 跟场响应页（用例6/7/8/10）【B·跟场线·已完成】
 │   │   ├── rescue/           # B7 救场接单页（用例9）【B·跟场线·已完成】
 │   │   ├── archive/          # B8 赛后归档页（用例11/12）【C·看板线】
-│   │   └── schedule-form/    # B9 赛程表单页（用例3/5）【A·赛程线】
+│   │   ├── schedule-form/    # B9 赛程表单页（用例3/5）【A·赛程线】
+│   │   └── schedule-list/    # 队长本队赛程管理列表【A·赛程线】
 │   ├── components/
 │   │   ├── match-detail-card/ # B10 共用比赛详情卡片（三处复用）
 │   │   └── page-placeholder/  # 未完成页面统一占位组件
@@ -26,12 +27,12 @@ yaliquankai/
 │       └── status.js         # D2 状态机常量（黄/绿/红/橙/灰 + 角色）
 ├── cloudfunctions/           # 云函数（控制类）
 │   ├── AuthManager/          # C1 身份认证【已完成】
-│   ├── ScheduleManager/      # C2 赛程管理【冲刺第 2 天查询、新建与编辑已实装】
+│   ├── ScheduleManager/      # C2 赛程管理【冲刺第 3 天查询、新建、编辑与取消已实装】
 │   └── DutyManager/          # C3 跟场任务【B·已完成：9 action 已实装】
 └── project.config.json
 ```
 
-**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建与事务编辑，A 线后续完成管理列表、取消与分享，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
+**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；A 线后续完成分享，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
 
 ## 环境信息
 
@@ -86,6 +87,14 @@ GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 
 - 配套修正 DutyManager：当前确认以 Match 快照为准，重算条件写回，避免旧确认与重算覆盖赛程重置。
 - 本地 ESLint、自动测试及表单 WXML/WXSS 编译通过；未部署，未创建或核验云端唯一索引，未进行真机验收。
 - 今天的实现范围、索引清单与第 3 天任务见 [第二天交接说明](docs/a-line-day2.md)。
+
+## A 线冲刺第 3 天
+
+- 首页新增本队赛程管理入口；管理列表支持加载、空态、失败重试、下拉刷新和返回刷新，已取消比赛保留只读查看。
+- `cancelMatch` 使用事务重新校验队长、队伍、比赛状态与 version；清空跟场快照、保留历史，重复取消不重复递增版本。
+- 表单支持二次确认、取消弱网重试、409 后刷新以及返回管理列表；保存与取消互斥，取消成功后恢复已保存详情。
+- 本地 ESLint 零警告、103 项自动测试通过，首页/列表/表单 WXML、WXSS 编译通过；未部署，未做真机验收。
+- 部署验收清单和第 4 天范围见 [第三天交接说明](docs/a-line-day3.md)。
 
 ## A 线开工前确认
 

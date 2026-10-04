@@ -16,4 +16,8 @@ Page({
     if (getUser().role !== ROLE.CAPTAIN) return;
     wx.navigateTo({ url: "/pages/schedule-form/index" });
   },
+  onManage() {
+    if (getUser().role !== ROLE.CAPTAIN) return;
+    wx.navigateTo({ url: "/pages/schedule-list/index" });
+  },
 });

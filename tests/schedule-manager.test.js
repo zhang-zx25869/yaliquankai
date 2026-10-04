@@ -149,9 +149,9 @@ async function invoke(schedule, event) {
   }
 }
 
-test("implemented reads work while share and cancellation remain guarded placeholders", async () => {
+test("implemented reads work while sharing remains a guarded placeholder", async () => {
   const schedule = loadScheduleManager();
-  for (const action of ["getShareCard", "cancelMatch"]) {
+  for (const action of ["getShareCard"]) {
     assert.deepEqual(await invoke(schedule, { action, matchId: "match-1" }), { code: 501, message: `${action} 开发中` });
   }
   for (const action of ["getMyMatches", "getMatchForEdit"]) {
@@ -654,4 +654,95 @@ test("another captain cannot replay a saved request and replay metadata remains 
   assert.ok(!JSON.stringify(dto).includes("lastSave"));
   schedule.collections.MatchCollection[0].lastSaveOpenid = "another-captain";
   assert.equal((await invoke(schedule, validEdit())).code, 409);
+});
+
+test("cancellation clears the snapshot, keeps duty history and is idempotent for all allowed statuses", async () => {
+  for (const cellStatus of ["pending", "confirmed", "help", "tbd", "dutyCancelled"]) {
+    const original = match({ cellStatus, dutyRevision: 4, version: 7,
+      confirmerOpenid: "member-1", confirmerNickname: "经理", confirmerType: "confirm",
+      ...(cellStatus === "tbd" ? { isTbd: true, matchTime: null, endTime: null } : {}),
+    });
+    const duties = [{ _id: "duty-1", matchId: "match-1", openid: "member-1", type: "confirm" }];
+    const schedule = loadScheduleManager({ matches: [original], duties });
+    const event = { action: "cancelMatch", matchId: "match-1", version: 7 };
+    const result = await invoke(schedule, event);
+    assert.deepEqual(result, { code: 0, data: { cellStatus: "cancelled", version: 8 } });
+    const cancelled = structuredClone(schedule.collections.MatchCollection[0]);
+    assert.equal(cancelled.dutyRevision, 4);
+    assert.equal(cancelled.matchTime, original.matchTime);
+    assert.ok(cancelled.updatedAt > original.updatedAt);
+    for (const field of ["confirmerOpenid", "confirmerNickname", "confirmerType"]) assert.equal(cancelled[field], "");
+    assert.deepEqual(schedule.collections.DutyRecordCollection, duties);
+    assert.deepEqual(await invoke(schedule, event), result);
+    assert.deepEqual(schedule.collections.MatchCollection[0], cancelled);
+    assert.equal((await invoke(schedule, { action: "getMyMatches" })).data.list[0].cellStatus, "cancelled");
+  }
+});
+
+test("cancellation rejects malformed/stale versions, terminal states and elapsed endTime without writing", async (t) => {
+  const now = Date.now();
+  t.mock.method(Date, "now", () => now);
+  const cases = [
+    ...[undefined, 0, -1, 1.5, "1"].map((version) => ({ version, code: 400 })),
+    { version: 2, code: 409 },
+    ...[{ cellStatus: "settle" }, { isArchived: true }, { cellStatus: "unknown" }, { endTime: now }, { endTime: now - 1 }]
+      .map((overrides) => ({ overrides, version: 1, code: 409 })),
+  ];
+  for (const scenario of cases) {
+    const original = match(scenario.overrides);
+    const schedule = loadScheduleManager({ matches: [original] });
+    assert.equal((await invoke(schedule, { action: "cancelMatch", matchId: "match-1", version: scenario.version })).code, scenario.code);
+    assert.deepEqual(schedule.collections.MatchCollection, [original]);
+  }
+  const ongoing = loadScheduleManager({ matches: [match({ matchTime: now - 1, endTime: now + 1 })] });
+  assert.equal((await invoke(ongoing, { action: "cancelMatch", matchId: "match-1", version: 1 })).code, 0);
+});
+
+test("cancel transaction rereads identity, team, ownership, endTime and archive state", async () => {
+  const cases = [
+    { change: (c) => { c.UserCollection[0].role = "member"; }, code: 403 },
+    { change: (c) => { c.UserCollection[0].openid = "replacement"; }, code: 401 },
+    { change: (c) => { c.UserCollection = []; }, code: 401 },
+    { change: (c) => { c.TeamCollection[0].enabled = false; }, code: 403 },
+    { change: (c) => { c.MatchCollection[0].teamId = "other-team"; }, code: 403 },
+    { change: (c) => { c.MatchCollection = []; }, code: 404 },
+    { change: (c) => { c.MatchCollection[0].version = 2; }, code: 409 },
+    { change: (c) => { c.MatchCollection[0].isArchived = true; }, code: 409 },
+    { change: (c) => { c.MatchCollection[0].endTime = Date.now() - 1; }, code: 409 },
+  ];
+  for (const scenario of cases) {
+    const schedule = loadScheduleManager({ beforeTransaction: scenario.change });
+    assert.equal((await invoke(schedule, { action: "cancelMatch", matchId: "match-1", version: 1 })).code, scenario.code);
+    assert.notEqual(schedule.collections.MatchCollection[0]?.cellStatus, "cancelled");
+  }
+});
+
+test("concurrent cancellations increment once and a failed cancellation rolls back", async () => {
+  const event = { action: "cancelMatch", matchId: "match-1", version: 1 };
+  const schedule = loadScheduleManager();
+  const results = await Promise.all([invoke(schedule, event), invoke(schedule, event)]);
+  assert.deepEqual(results[0], results[1]);
+  assert.equal(results[0].data.version, 2);
+  assert.equal(schedule.collections.MatchCollection[0].version, 2);
+  const original = match({ confirmerOpenid: "member-1", cellStatus: "confirmed" });
+  const failed = loadScheduleManager({ matches: [original], failUpdate: true });
+  assert.equal((await invoke(failed, event)).code, 500);
+  assert.deepEqual(failed.collections.MatchCollection, [original]);
+});
+
+test("cancel and edit with the same version cannot both succeed and old saves cannot replay after cancellation", async () => {
+  for (const cancelFirst of [true, false]) {
+    const original = match();
+    const schedule = loadScheduleManager({ matches: [original] });
+    const cancel = { action: "cancelMatch", matchId: "match-1", version: 1 };
+    const edit = { ...original, action: "saveMatch", matchId: "match-1", requestId: "edit-before-cancel", rival: "新对手" };
+    const results = await Promise.all((cancelFirst ? [cancel, edit] : [edit, cancel]).map((event) => invoke(schedule, event)));
+    assert.deepEqual(results.map((result) => result.code), [0, 409]);
+    assert.equal(schedule.collections.MatchCollection[0].version, 2);
+    if (!cancelFirst) {
+      assert.equal((await invoke(schedule, { ...cancel, version: 2 })).code, 0);
+      assert.equal((await invoke(schedule, edit)).code, 409);
+      assert.equal(schedule.collections.MatchCollection[0].cellStatus, "cancelled");
+    }
+  }
 });

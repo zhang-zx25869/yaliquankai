@@ -21,3 +21,6 @@
 .error { color: #b42318; font-size: 26rpx; line-height: 1.6; margin-top: 24rpx; }
 .status { font-size: 28rpx; font-weight: bold; margin-top: 16rpx; }
 .success { border-left: 8rpx solid #7a1733; }
+
+.danger { margin-top: 24rpx; color: #b42318; background: #fff; font-size: 30rpx; }
+.secondary { margin-top: 24rpx; }
