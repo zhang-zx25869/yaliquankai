@@ -1,4 +1,4 @@
-// 赛程管理：队长查询、新建与事务编辑；分享和取消按后续排期实现。
+// 赛程管理：队长查询、新建、事务编辑与取消；分享按后续排期实现。
 const cloud = require("wx-server-sdk");
 const { createHash } = require("crypto");
 const { toScheduleSummaryDTO, toScheduleEditDTO } = require("./dto");
@@ -236,6 +236,42 @@ async function updateMatch(openid, identity, event, original) {
   });
 }
 
+async function cancelMatch(openid, identity, event, original) {
+  return db.runTransaction(async (transaction) => {
+    const user = documentData(await transaction.collection("UserCollection").doc(identity.user._id).get());
+    const team = documentData(await transaction.collection("TeamCollection").doc(identity.team._id).get());
+    if (!user || user.openid !== openid) throw new ScheduleError(401, "身份已变化，请重新登录");
+    checkCaptainTeam(user, team);
+    const ref = transaction.collection("MatchCollection").doc(original._id);
+    const match = documentData(await ref.get());
+    if (!match) throw new ScheduleError(404, "比赛不存在");
+    if (match.teamId !== team._id) throw new ScheduleError(403, "只能管理本队赛程");
+    // 响应丢失后以旧版本重试仍成功；重复取消不写库、不递增版本。
+    if (match.cellStatus === CELL_STATUS.CANCELLED) {
+      return ok({ cellStatus: CELL_STATUS.CANCELLED, version: match.version });
+    }
+    if (!Number.isSafeInteger(event.version) || event.version < 1) {
+      throw new ScheduleError(400, "取消比赛必须携带有效版本号");
+    }
+    if (match.version !== event.version) throw new ScheduleError(409, "赛程已被修改，请刷新后重试");
+    const now = Date.now();
+    if (match.isArchived || ![...EDITABLE_STATUSES, CELL_STATUS.DUTY_CANCELLED].includes(match.cellStatus)) {
+      throw new ScheduleError(409, "该比赛当前状态不允许取消");
+    }
+    if (!match.isTbd && Number.isFinite(match.endTime) && match.endTime <= now) {
+      throw new ScheduleError(409, "比赛已结束，无法取消");
+    }
+    const version = match.version + 1;
+    await ref.update({ data: {
+      cellStatus: CELL_STATUS.CANCELLED, version, updatedAt: now,
+      confirmerOpenid: "", confirmerNickname: "", confirmerType: "",
+      // 取消是后续管理操作，旧编辑请求不能再返回取消前的成功快照。
+      lastRequestId: "", lastSaveOpenid: "", lastSaveResult: null,
+    } });
+    return ok({ cellStatus: CELL_STATUS.CANCELLED, version });
+  });
+}
+
 exports.main = async (event = {}) => {
   try {
     const action = event && event.action;
@@ -256,9 +292,10 @@ exports.main = async (event = {}) => {
         }
         return await createMatch(OPENID, identity, event);
       case ACTION.GET_SHARE_CARD:
-      case ACTION.CANCEL_MATCH:
         await requireOwnMatch(team._id, event.matchId);
         return notImplemented(action);
+      case ACTION.CANCEL_MATCH:
+        return await cancelMatch(OPENID, identity, event, await requireOwnMatch(team._id, event.matchId));
       default:
         return fail(400, "未知操作");
     }

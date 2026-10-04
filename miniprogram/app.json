@@ -7,7 +7,8 @@
     "pages/respond/index",
     "pages/rescue/index",
     "pages/archive/index",
-    "pages/schedule-form/index"
+    "pages/schedule-form/index",
+    "pages/schedule-list/index"
   ],
   "usingComponents": {
     "match-detail-card": "/components/match-detail-card/index",

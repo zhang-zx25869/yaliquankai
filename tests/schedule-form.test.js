@@ -23,6 +23,7 @@ function loadPage(relativePath, options = {}) {
   const context = {
     Date,
     Page(value) { definition = value; },
+    getCurrentPages: () => options.pages || [],
     require(specifier) {
       if (specifier === "../../utils/call") return {
         getUser: () => user,
@@ -38,8 +39,15 @@ function loadPage(relativePath, options = {}) {
     wx: {
       setNavigationBarTitle() {},
       showToast(value) { toasts.push(value); },
-      showModal(value) { modals.push(value); },
+      showModal(value) {
+        modals.push(value);
+        if (options.modal) options.modal(value);
+        else if (value.success) value.success({ confirm: options.confirmCancel === true });
+      },
       navigateTo(value) { routes.push(value); },
+      redirectTo(value) { routes.push(value); },
+      navigateBack(value) { routes.push(value); },
+      stopPullDownRefresh() {},
       switchTab(value) { routes.push(value); },
     },
   };
@@ -357,4 +365,230 @@ test("TBD edits send null times and demand reordering does not trigger a private
   assert.equal(calls.at(-1).payload.matchTime, null);
   assert.equal(calls.at(-1).payload.endTime, null);
   assert.equal(modals.length, 0);
+});
+
+test("captains can reach the management list and list rows open original edit data", async () => {
+  const home = loadPage("index");
+  await home.page.onShow();
+  home.page.onManage();
+  assert.equal(home.routes[0].url, "/pages/schedule-list/index");
+  home.setUser({ role: "guest" });
+  home.page.onManage();
+  assert.equal(home.routes.length, 1);
+  let cellStatus = "pending";
+  const context = loadPage("schedule-list", { async call() {
+    return { list: [{ _id: "match/1", cellStatus, timeText: "时间待定" }] };
+  } });
+  context.page.onLoad();
+  await context.page.onShow();
+  assert.equal(context.calls[0].payload.action, "getMyMatches");
+  context.page.onOpenMatch({ currentTarget: { dataset: { id: "match/1" } } });
+  assert.equal(context.routes[0].url, "/pages/schedule-form/index?matchId=match%2F1");
+  cellStatus = "cancelled";
+  await context.page.onShow();
+  assert.equal(context.page.data.list[0].actionLabel, "查看已取消赛程");
+  context.page.onOpenMatch({ currentTarget: { dataset: { id: "missing" } } });
+  assert.equal(context.routes.length, 1);
+});
+
+test("management list handles empty, denied, failed and overlapping refreshes", async () => {
+  for (const role of ["guest", "member", "admin"]) {
+    const context = loadPage("schedule-list", { user: { role } });
+    context.page.onLoad();
+    await context.page.onShow();
+    assert.equal(context.page.data.authorized, false);
+    assert.equal(context.calls.length, 0);
+  }
+  let fail = true;
+  const context = loadPage("schedule-list", { async call() {
+    if (fail) throw { code: 500, message: "加载失败" };
+    return { list: [] };
+  } });
+  context.page.onLoad();
+  await context.page.onShow();
+  assert.equal(context.page.data.errorText, "加载失败");
+  fail = false;
+  await context.page.onPullDownRefresh();
+  assert.equal(context.page.data.errorText, "");
+  assert.equal(context.page.data.list.length, 0);
+  let release;
+  let count = 0;
+  let signalStarted;
+  const started = new Promise((resolve) => { signalStarted = resolve; });
+  const overlapping = loadPage("schedule-list", { async call() {
+    if (++count === 1) return new Promise((resolve) => { release = resolve; signalStarted(); });
+    return { list: [{ _id: "latest", cellStatus: "cancelled" }] };
+  } });
+  overlapping.page.onLoad();
+  const old = overlapping.page.onShow();
+  await started;
+  await overlapping.page.onShow();
+  release({ list: [{ _id: "stale", cellStatus: "pending" }] });
+  await old;
+  assert.equal(overlapping.page.data.list[0]._id, "latest");
+});
+
+test("cancellation requires confirmation, blocks duplicate clicks and restores saved fields as read-only", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let current = editDTO();
+  let modal;
+  const { page, calls, toasts, routes } = loadPage("schedule-form", {
+    modal(value) { modal = value; },
+    async call(_name, payload) {
+      if (payload.action === "getMatchForEdit") return { match: current };
+      assert.equal(payload.action, "cancelMatch");
+      current = editDTO({ cellStatus: "cancelled", version: 6 });
+      return { cellStatus: "cancelled", version: 6 };
+    },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  let action = page.onCancel();
+  assert.equal(page.data.confirmingCancel, true);
+  await page.onCancel();
+  await page.onSave();
+  assert.equal(calls.length, 1);
+  modal.success({ confirm: false });
+  await action;
+  assert.equal(calls.length, 1);
+  page.onFieldInput({ currentTarget: { dataset: { field: "rival" } }, detail: { value: "未保存对手" } });
+  action = page.onCancel();
+  modal.success({ confirm: true });
+  await action;
+  assert.deepEqual(calls[1].payload, { action: "cancelMatch", matchId: "match-1", version: 5 });
+  assert.equal(page.data.viewOnly, true);
+  assert.equal(page.data.cancelled, true);
+  assert.equal(page.data.form.rival, "对手队");
+  assert.equal(page.data.canCancel, false);
+  assert.equal(toasts.at(-1).title, "比赛已取消");
+  await page.onSave();
+  await page.onCancel();
+  assert.equal(calls.length, 3);
+  page.onManage();
+  assert.equal(routes.at(-1).url, "/pages/schedule-list/index");
+});
+
+test("uncertain cancellation locks other actions and retries the original version without a second modal", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let attempt = 0;
+  let current = editDTO();
+  const { page, calls, modals, routes } = loadPage("schedule-form", {
+    confirmCancel: true,
+    async call(_name, payload) {
+      if (payload.action === "getMatchForEdit") return { match: current };
+      attempt += 1;
+      current = editDTO({ cellStatus: "cancelled", version: 6 });
+      if (attempt === 1) throw { code: 500, message: "响应丢失" };
+      if (attempt === 2) return null;
+      return { cellStatus: "cancelled", version: 6 };
+    },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  await page.onCancel();
+  assert.equal(page.data.cancelRetryPending, true);
+  page.onFieldInput({ currentTarget: { dataset: { field: "rival" } }, detail: { value: "不应写入" } });
+  await page.onSave();
+  await page.onReload();
+  page.onManage();
+  await page.onShow();
+  assert.equal(page.data.form.rival, "对手队");
+  assert.equal(routes.length, 0);
+  assert.equal(calls.length, 2);
+  await page.onCancel();
+  assert.equal(page.data.cancelRetryPending, true);
+  await page.onCancel();
+  assert.equal(modals.length, 1);
+  assert.deepEqual(calls[1].payload, calls[2].payload);
+  assert.deepEqual(calls[1].payload, calls[3].payload);
+  assert.equal(page.data.cancelled, true);
+  assert.equal(page.data.cancelRetryPending, false);
+});
+
+test("cancellation conflicts require a reload and a fresh confirmation using the new version", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let version = 5;
+  let cancelled = false;
+  const { page, calls, modals } = loadPage("schedule-form", {
+    confirmCancel: true,
+    async call(_name, payload) {
+      if (payload.action === "getMatchForEdit") return { match: editDTO({ version, cellStatus: cancelled ? "cancelled" : "pending" }) };
+      if (payload.version !== version) throw { code: 409, message: "请刷新" };
+      cancelled = true;
+      return { cellStatus: "cancelled", version: ++version };
+    },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  version = 6;
+  await page.onCancel();
+  assert.equal(page.data.conflict, true);
+  assert.equal(page.data.cancelRetryPending, false);
+  await page.onCancel();
+  await page.onSave();
+  assert.equal(calls.length, 2);
+  await page.onReload();
+  await page.onCancel();
+  assert.equal(calls[3].payload.version, 6);
+  assert.equal(modals.length, 2);
+  assert.equal(page.data.cancelled, true);
+});
+
+test("cancel availability matches the contract, including ongoing and dutyCancelled matches", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  for (const [fields, allowed] of [
+    [{ cellStatus: "dutyCancelled" }, true], [{ matchTime: NOW - 1, endTime: NOW + 1 }, true],
+    [{ isTbd: true, matchTime: null, endTime: null, cellStatus: "tbd" }, true],
+    [{ isArchived: true }, false], [{ cellStatus: "settle" }, false],
+    [{ cellStatus: "cancelled" }, false], [{ endTime: NOW }, false],
+  ]) {
+    const { page, calls } = loadPage("schedule-form", { async call() { return { match: editDTO(fields) }; } });
+    page.onLoad({ matchId: "match-1" });
+    await page.onShow();
+    assert.equal(page.data.canCancel, allowed);
+    await page.onCancel();
+    assert.equal(calls.length, 1);
+  }
+});
+
+test("returning after an edit uses the existing management page and does not grow the page stack", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const { page, routes } = loadPage("schedule-form", {
+    pages: [{ route: "pages/index/index" }, { route: "pages/schedule-list/index" }, { route: "pages/schedule-form/index" }],
+    async call() { return { match: editDTO() }; },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  page.onManage();
+  assert.equal(routes[0].delta, 1);
+  assert.equal(routes[0].url, undefined);
+});
+
+test("a successful cancellation stays read-only even when its detail refresh fails", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let cancelled = false;
+  const { page, calls } = loadPage("schedule-form", {
+    confirmCancel: true,
+    async call(_name, payload) {
+      if (payload.action === "getMatchForEdit") {
+        if (cancelled) throw { code: 500, message: "刷新失败" };
+        return { match: editDTO() };
+      }
+      cancelled = true;
+      return { cellStatus: "cancelled", version: 6 };
+    },
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  page.onFieldInput({ currentTarget: { dataset: { field: "rival" } }, detail: { value: "草稿" } });
+  await page.onCancel();
+  assert.equal(page.data.cancelled, true);
+  assert.equal(page.data.viewOnly, true);
+  assert.equal(page.data.form.rival, "对手队");
+  assert.equal(page.data.cancelRetryPending, false);
+  assert.equal(page.data.canCancel, false);
+  assert.equal(page.data.errorText, "刷新失败");
+  await page.onSave();
+  await page.onCancel();
+  assert.equal(calls.length, 3);
 });
