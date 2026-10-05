@@ -1,7 +1,7 @@
-// 赛程管理：队长查询、新建、事务编辑与取消；分享按后续排期实现。
+// 赛程管理：队长查询、新建、事务编辑、取消与分享。
 const cloud = require("wx-server-sdk");
 const { createHash } = require("crypto");
-const { toScheduleSummaryDTO, toScheduleEditDTO } = require("./dto");
+const { toScheduleSummaryDTO, toScheduleEditDTO, formatMatchTime } = require("./dto");
 
 cloud.init({ env: cloud.DYNAMIC_CURRENT_ENV });
 const db = cloud.database();
@@ -22,7 +22,6 @@ const FORCE_RED_MS = 48 * 60 * 60 * 1000;
 const PAGE_SIZE = 100;
 const ok = (data) => ({ code: 0, data });
 const fail = (code, message) => ({ code, message });
-const notImplemented = (action) => fail(501, `${action} 开发中`);
 
 class ScheduleError extends Error {
   constructor(code, message) {
@@ -164,6 +163,16 @@ async function createMatch(openid, identity, event) {
 }
 
 const EDITABLE_STATUSES = [CELL_STATUS.PENDING, CELL_STATUS.CONFIRMED, CELL_STATUS.HELP, CELL_STATUS.TBD];
+function getShareCard(match) {
+  if (match.isArchived || !EDITABLE_STATUSES.includes(match.cellStatus)
+    || (!match.isTbd && (!Number.isFinite(match.endTime) || match.endTime <= Date.now()))) {
+    throw new ScheduleError(409, "该比赛当前状态不允许分享");
+  }
+  return ok({
+    title: `【跟场确认】${match.sport} · ${match.teamName} vs ${match.rival} ${formatMatchTime(match.matchTime, match.isTbd)}`,
+    path: `/pages/respond/index?matchId=${encodeURIComponent(match._id)}`,
+  });
+}
 const basisChanged = (match, fields) => ["matchTime", "endTime", "location", "isTbd"]
   .some((field) => match[field] !== fields[field]);
 
@@ -292,8 +301,7 @@ exports.main = async (event = {}) => {
         }
         return await createMatch(OPENID, identity, event);
       case ACTION.GET_SHARE_CARD:
-        await requireOwnMatch(team._id, event.matchId);
-        return notImplemented(action);
+        return getShareCard(await requireOwnMatch(team._id, event.matchId));
       case ACTION.CANCEL_MATCH:
         return await cancelMatch(OPENID, identity, event, await requireOwnMatch(team._id, event.matchId));
       default:

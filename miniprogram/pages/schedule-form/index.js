@@ -20,6 +20,7 @@ Page({
     saved: false, editing: false, viewOnly: false, conflict: false,
     canCancel: false, confirmingCancel: false, cancelling: false, cancelRetryPending: false, cancelled: false,
     errorText: "", statusLabel: "", statusColor: "",
+    shareReady: false, shareLoading: false, shareError: "", shareAvailable: false,
   },
 
   onLoad(options = {}) {
@@ -29,6 +30,10 @@ Page({
     this._loaded = false;
     this._originalMatch = null;
     this._loadSequence = 0;
+    this._shareSequence = 0;
+    this._shareMatch = null;
+    this._dirty = false;
+    this.invalidateShare();
     this.setData({
       minDate: dateTimeFields(Date.now()).date,
       editing: Boolean(this._matchId), viewOnly: Boolean(this._matchId),
@@ -37,8 +42,10 @@ Page({
   },
 
   async onShow() {
+    this._visible = true;
     // 返回页面不能覆盖尚未保存的输入，也不能丢失网络重试的原请求。
     const sequence = ++this._loadSequence;
+    this.invalidateShare();
     this.setData({ ready: false, authorized: false });
     try {
       await waitForUser();
@@ -58,6 +65,8 @@ Page({
         const end = match.isTbd ? { date: "", time: "" } : dateTimeFields(match.endTime);
         const meta = STATUS_META[match.cellStatus] || {};
         this._originalMatch = match;
+        this._shareMatch = match;
+        this._dirty = false;
         this.setData({
           form: {
             sport: match.sport, rival: match.rival, location: match.location,
@@ -86,6 +95,71 @@ Page({
     } finally {
       if (sequence === this._loadSequence) this.setData({ ready: true });
     }
+    if (sequence === this._loadSequence && !this.data.errorText) await this.prefetchShare();
+  },
+
+  invalidateShare() {
+    this._shareSequence += 1;
+    this._shareCard = null;
+    this._shareIdentity = null;
+    this.setData({ shareReady: false, shareLoading: false, shareError: "", shareAvailable: false });
+    wx.hideShareMenu({ menus: ["shareAppMessage", "shareTimeline"] });
+  },
+
+  canShare() {
+    const match = this._shareMatch;
+    return this._visible && this.data.ready && this.data.authorized && getUser().role === ROLE.CAPTAIN
+      && !this._dirty && !this.data.saving && !this.data.retryPending && !this.data.conflict
+      && !this.data.confirmingCancel && !this.data.cancelling && !this.data.cancelRetryPending
+      && match && !match.isArchived && editableStatuses.includes(match.cellStatus)
+      && (match.isTbd || match.endTime > Date.now());
+  },
+
+  async prefetchShare() {
+    this.invalidateShare();
+    if (!this.canShare()) return;
+    const sequence = this._shareSequence;
+    const matchId = this._shareMatch._id;
+    const identity = JSON.stringify(getUser());
+    this.setData({ shareLoading: true, shareAvailable: true });
+    try {
+      const card = await call("ScheduleManager", { action: "getShareCard", matchId }, { loading: false, toast: false });
+      if (sequence !== this._shareSequence || !this.canShare() || identity !== JSON.stringify(getUser())) return;
+      if (!card || typeof card.title !== "string" || !card.title.trim()
+        || card.path !== `/pages/respond/index?matchId=${encodeURIComponent(matchId)}`) {
+        throw new Error("分享信息不完整，请重试");
+      }
+      this._shareCard = { title: card.title, path: card.path };
+      this._shareIdentity = identity;
+      this.setData({ shareReady: true });
+      wx.showShareMenu({ menus: ["shareAppMessage"] });
+    } catch (error) {
+      if (sequence !== this._shareSequence) return;
+      this.setData({
+        shareError: error.message || "分享信息加载失败，请重试",
+        shareAvailable: ![401, 403, 404, 409].includes(error.code),
+      });
+    } finally {
+      if (sequence === this._shareSequence) this.setData({ shareLoading: false });
+    }
+  },
+
+  onShareAppMessage() {
+    // 微信要求同步返回；菜单绕过禁用按钮时只分享首页，不发送过期比赛卡片。
+    if (this.data.shareReady && this.canShare() && this._shareCard
+      && this._shareIdentity === JSON.stringify(getUser())) return { ...this._shareCard };
+    return { title: "雅力全开 · 赛事跟场", path: "/pages/index/index" };
+  },
+
+  onHide() {
+    this._visible = false;
+    this.invalidateShare();
+  },
+
+  onUnload() {
+    this._visible = false;
+    this._loadSequence += 1;
+    this.invalidateShare();
   },
 
   isLocked() {
@@ -98,16 +172,22 @@ Page({
     if (this.isLocked()) return;
     const field = event.currentTarget.dataset.field;
     if (!["sport", "rival", "location", "startDate", "startTime", "endDate", "endTime"].includes(field)) return;
+    this._dirty = true;
+    this.invalidateShare();
     this.setData({ [`form.${field}`]: event.detail.value, errorText: "" });
   },
 
   onTbdChange(event) {
     if (this.isLocked()) return;
+    this._dirty = true;
+    this.invalidateShare();
     this.setData({ "form.isTbd": event.detail.value, errorText: "" });
   },
 
   onDemandsChange(event) {
     if (this.isLocked()) return;
+    this._dirty = true;
+    this.invalidateShare();
     const selected = event.detail.value;
     this.setData({ "form.demands": selected, demandOptions: demandOptions(selected), errorText: "" });
   },
@@ -132,6 +212,7 @@ Page({
         return;
       }
     }
+    this.invalidateShare();
     this.setData({ saving: true, errorText: "" });
     try {
       const submitted = this._pendingSave;
@@ -143,6 +224,8 @@ Page({
       const demandsChanged = this._originalMatch && !sameDemands(this._originalMatch.demands, submitted.demands);
       const meta = STATUS_META[result.cellStatus];
       this._pendingSave = null;
+      this._shareMatch = { ...submitted, _id: result.matchId, cellStatus: result.cellStatus };
+      this._dirty = false;
       this.setData({
         saved: true, retryPending: false,
         statusLabel: meta.label || "", statusColor: meta.color || "#999999",
@@ -164,6 +247,7 @@ Page({
     } finally {
       this.setData({ saving: false });
     }
+    if (this.data.saved) await this.prefetchShare();
   },
 
   async onReload() {
@@ -203,6 +287,7 @@ Page({
         action: "cancelMatch", matchId: this._matchId, version: this._originalMatch.version,
       };
     }
+    this.invalidateShare();
     this.setData({ cancelling: true, errorText: "" });
     try {
       const result = await call("ScheduleManager", this._pendingCancel);
@@ -212,6 +297,7 @@ Page({
       }
       this._pendingCancel = null;
       this._originalMatch = { ...this._originalMatch, cellStatus: result.cellStatus, version: result.version };
+      this._shareMatch = this._originalMatch;
       const meta = STATUS_META[CELL_STATUS.CANCELLED];
       this.setData({
         cancelled: true, canCancel: false, viewOnly: true, cancelRetryPending: false,
@@ -250,6 +336,9 @@ Page({
   onCreateAnother() {
     if (!this.data.saved || this.data.saving || this.data.editing) return;
     this._pendingSave = null;
+    this._shareMatch = null;
+    this._dirty = false;
+    this.invalidateShare();
     this.setData({
       form: blankForm(), demandOptions: demandOptions(),
       saved: false, retryPending: false, errorText: "", statusLabel: "", statusColor: "",

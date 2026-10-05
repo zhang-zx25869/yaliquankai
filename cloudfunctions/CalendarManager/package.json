@@ -1,0 +1,7 @@
+{
+  "name": "CalendarManager",
+  "version": "1.0.0",
+  "description": "公共赛程日期范围查询与脱敏详情",
+  "main": "index.js",
+  "dependencies": { "wx-server-sdk": "~2.6.3" }
+}
