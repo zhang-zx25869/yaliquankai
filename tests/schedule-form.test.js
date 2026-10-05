@@ -17,6 +17,7 @@ function loadPage(relativePath, options = {}) {
   let definition;
   let user = options.user || { role: "captain" };
   const calls = [];
+  const shareCalls = [];
   const toasts = [];
   const routes = [];
   const modals = [];
@@ -29,6 +30,11 @@ function loadPage(relativePath, options = {}) {
         getUser: () => user,
         waitForUser: () => options.waitForUser ? options.waitForUser() : Promise.resolve(user),
         async call(name, payload) {
+          if (payload.action === "getShareCard") {
+            shareCalls.push({ name, payload: structuredClone(payload) });
+            if (options.shareCall) return options.shareCall(name, payload);
+            return { title: "测试分享", path: "/pages/respond/index?matchId=" + encodeURIComponent(payload.matchId) };
+          }
           calls.push({ name, payload: structuredClone(payload) });
           if (options.call) return options.call(name, payload);
           return { matchId: "saved-match", cellStatus: "pending", version: 1 };
@@ -37,6 +43,8 @@ function loadPage(relativePath, options = {}) {
       return require(path.resolve(path.dirname(filename), specifier));
     },
     wx: {
+      hideShareMenu() {},
+      showShareMenu() {},
       setNavigationBarTitle() {},
       showToast(value) { toasts.push(value); },
       showModal(value) {
@@ -61,7 +69,7 @@ function loadPage(relativePath, options = {}) {
       target[parts.at(-1)] = value;
     }
   };
-  return { page, calls, toasts, routes, modals, setUser(value) { user = value; } };
+  return { page, calls, shareCalls, toasts, routes, modals, setUser(value) { user = value; } };
 }
 
 test("form dates use Shanghai time and reject calendar rollovers", () => {
@@ -591,4 +599,199 @@ test("a successful cancellation stays read-only even when its detail refresh fai
   await page.onSave();
   await page.onCancel();
   assert.equal(calls.length, 3);
+});
+
+test("share is preloaded on entry and save; callback is synchronous and never calls the cloud", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const { page, shareCalls } = loadPage("schedule-form");
+  page.onLoad({});
+  await page.onShow();
+  assert.equal(page.data.shareReady, false);
+  page.setData({ form: validForm() });
+  await page.onSave();
+  assert.equal(shareCalls.length, 1);
+  assert.equal(shareCalls[0].payload.matchId, "saved-match");
+  assert.equal(page.data.shareReady, true);
+  const card = page.onShareAppMessage();
+  assert.equal(card.path, "/pages/respond/index?matchId=saved-match");
+  assert.equal(typeof card.then, "undefined");
+  assert.equal(shareCalls.length, 1);
+  page.onCreateAnother();
+  assert.equal(page.data.shareReady, false);
+  assert.equal(page.onShareAppMessage().path, "/pages/index/index");
+});
+
+test("share loading blocks stale callbacks; draft changes discard late configuration", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let release;
+  const { page } = loadPage("schedule-form", {
+    call: async () => ({ match: editDTO() }),
+    shareCall: () => new Promise((resolve) => { release = resolve; }),
+  });
+  page.onLoad({ matchId: "match-1" });
+  const show = page.onShow();
+  while (!release) await Promise.resolve();
+  assert.equal(page.data.shareLoading, true);
+  assert.equal(page.data.shareReady, false);
+  assert.equal(page.onShareAppMessage().path, "/pages/index/index");
+  page.onFieldInput({ currentTarget: { dataset: { field: "rival" } }, detail: { value: "新对手" } });
+  release({ title: "旧赛程", path: "/pages/respond/index?matchId=match-1" });
+  await show;
+  assert.equal(page.data.shareReady, false);
+  assert.equal(page.data.form.rival, "新对手");
+});
+
+test("share failure is independent of save success and can be retried", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let attempt = 0;
+  const { page, calls, shareCalls } = loadPage("schedule-form", {
+    shareCall: async () => {
+      if (++attempt === 1) throw new Error("分享网络异常");
+      return { title: "赛程", path: "/pages/respond/index?matchId=saved-match" };
+    },
+  });
+  page.onLoad({});
+  await page.onShow();
+  page.setData({ form: validForm() });
+  await page.onSave();
+  assert.equal(page.data.saved, true);
+  assert.equal(page.data.retryPending, false);
+  assert.equal(page.data.shareReady, false);
+  assert.equal(page.data.shareAvailable, true);
+  assert.equal(page.data.shareError, "分享网络异常");
+  await page.prefetchShare();
+  assert.equal(page.data.shareReady, true);
+  assert.equal(calls.length, 1);
+  assert.equal(shareCalls.length, 2);
+});
+
+test("cancel invalidates pending share responses and leaves cancelled match unshareable", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let release;
+  let current = editDTO();
+  const { page } = loadPage("schedule-form", {
+    confirmCancel: true,
+    call: async (_name, payload) => {
+      if (payload.action === "cancelMatch") {
+        current = { ...current, cellStatus: "cancelled", version: 6 };
+        return { cellStatus: "cancelled", version: 6 };
+      }
+      return { match: current };
+    },
+    shareCall: () => new Promise((resolve) => { release = resolve; }),
+  });
+  page.onLoad({ matchId: "match-1" });
+  const show = page.onShow();
+  while (!release) await Promise.resolve();
+  await page.onCancel();
+  release({ title: "旧赛程", path: "/pages/respond/index?matchId=match-1" });
+  await show;
+  assert.equal(page.data.cancelled, true);
+  assert.equal(page.data.shareReady, false);
+  assert.equal(page.onShareAppMessage().path, "/pages/index/index");
+});
+
+test("share guards cover role changes, expiry, malformed responses and terminal matches", async (t) => {
+  let now = NOW;
+  t.mock.method(Date, "now", () => now);
+  const loaded = loadPage("schedule-form", { call: async () => ({ match: editDTO() }) });
+  loaded.page.onLoad({ matchId: "match-1" });
+  await loaded.page.onShow();
+  assert.equal(loaded.page.data.shareReady, true);
+  loaded.setUser({ role: "captain", teamId: "other" });
+  assert.equal(loaded.page.onShareAppMessage().path, "/pages/index/index");
+  loaded.setUser({ role: "captain" });
+  now = editDTO().endTime;
+  assert.equal(loaded.page.onShareAppMessage().path, "/pages/index/index");
+  now = NOW;
+  for (const fields of [{ cellStatus: "cancelled" }, { cellStatus: "settle" }, { cellStatus: "dutyCancelled" }, { isArchived: true }]) {
+    const { page, shareCalls } = loadPage("schedule-form", { call: async () => ({ match: editDTO(fields) }) });
+    page.onLoad({ matchId: "match-1" });
+    await page.onShow();
+    assert.equal(page.data.shareReady, false);
+    assert.equal(shareCalls.length, 0);
+  }
+  const malformed = loadPage("schedule-form", {
+    call: async () => ({ match: editDTO() }), shareCall: async () => ({ title: "标题", path: "/wrong" }),
+  });
+  malformed.page.onLoad({ matchId: "match-1" });
+  await malformed.page.onShow();
+  assert.equal(malformed.page.data.shareReady, false);
+  assert.ok(malformed.page.data.shareError);
+});
+
+test("hiding or unloading a page rejects in-flight share responses and return refreshes cache", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  for (const lifecycle of ["onHide", "onUnload"]) {
+    let release;
+    const { page, shareCalls } = loadPage("schedule-form", {
+      call: async () => ({ match: editDTO() }),
+      shareCall: () => new Promise((resolve) => { release = resolve; }),
+    });
+    page.onLoad({ matchId: "match-1" });
+    const first = page.onShow();
+    while (!release) await Promise.resolve();
+    page[lifecycle]();
+    release({ title: "旧卡片", path: "/pages/respond/index?matchId=match-1" });
+    await first;
+    assert.equal(page.data.shareReady, false);
+    if (lifecycle === "onHide") {
+      release = null;
+      const second = page.onShow();
+      while (!release) await Promise.resolve();
+      release({ title: "新卡片", path: "/pages/respond/index?matchId=match-1" });
+      await second;
+      assert.equal(page.onShareAppMessage().title, "新卡片");
+      assert.equal(shareCalls.length, 2);
+    }
+  }
+});
+
+test("newer share prefetch wins even when an older response arrives last", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  const pending = [];
+  const { page } = loadPage("schedule-form", {
+    call: async () => ({ match: editDTO() }),
+    shareCall: () => new Promise((resolve) => pending.push(resolve)),
+  });
+  page.onLoad({ matchId: "match-1" });
+  const first = page.onShow();
+  while (pending.length < 1) await Promise.resolve();
+  const second = page.prefetchShare();
+  pending[1]({ title: "新卡片", path: "/pages/respond/index?matchId=match-1" });
+  await second;
+  pending[0]({ title: "旧卡片", path: "/pages/respond/index?matchId=match-1" });
+  await first;
+  assert.equal(page.onShareAppMessage().title, "新卡片");
+});
+
+test("successful edits prefetch fresh titles and failed cloud authorization never enables sharing", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let current = editDTO();
+  const { page, shareCalls } = loadPage("schedule-form", {
+    call: async (_name, payload) => {
+      if (payload.action === "getMatchForEdit") return { match: current };
+      current = { ...current, ...payload };
+      return { matchId: "match-1", cellStatus: "confirmed", version: 6 };
+    },
+    shareCall: async () => ({ title: current.rival, path: "/pages/respond/index?matchId=match-1" }),
+  });
+  page.onLoad({ matchId: "match-1" });
+  await page.onShow();
+  page.onFieldInput({ currentTarget: { dataset: { field: "rival" } }, detail: { value: "新对手" } });
+  assert.equal(page.data.shareReady, false);
+  await page.onSave();
+  assert.equal(page.onShareAppMessage().title, "新对手");
+  assert.equal(shareCalls.length, 2);
+  for (const code of [401, 403, 404, 409]) {
+    const denied = loadPage("schedule-form", {
+      call: async () => ({ match: editDTO() }),
+      shareCall: async () => { throw { code, message: "不可分享" }; },
+    });
+    denied.page.onLoad({ matchId: "match-1" });
+    await denied.page.onShow();
+    assert.equal(denied.page.data.shareReady, false);
+    assert.equal(denied.page.data.shareAvailable, false);
+    assert.equal(denied.page.onShareAppMessage().path, "/pages/index/index");
+  }
 });

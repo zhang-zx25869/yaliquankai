@@ -27,12 +27,13 @@ yaliquankai/
 │       └── status.js         # D2 状态机常量（黄/绿/红/橙/灰 + 角色）
 ├── cloudfunctions/           # 云函数（控制类）
 │   ├── AuthManager/          # C1 身份认证【已完成】
-│   ├── ScheduleManager/      # C2 赛程管理【冲刺第 3 天查询、新建、编辑与取消已实装】
+│   ├── ScheduleManager/      # C2 赛程管理【查询、新建、编辑、取消与分享已实装】
+│   ├── CalendarManager/      # C6 公共赛程【日期范围查询与详情已实装】
 │   └── DutyManager/          # C3 跟场任务【B·已完成：9 action 已实装】
 └── project.config.json
 ```
 
-**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；A 线后续完成分享，并负责 `CalendarManager.getCalendar/getMatchDetail` 首版；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`ArchiveManager`、`DashboardManager`、`CalendarManager`、`TeamManager`、`TimerChecker`。
+**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；A 线第 4 天已完成分享预加载和 `CalendarManager.getCalendar/getMatchDetail` 首版，第 5 天接入首页公共日历；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`TeamManager`。仓库已有 `ArchiveManager`、`DashboardManager` 和 `TimerChecker`，本次 A 线未重新验收其云端部署。
 
 ## 环境信息
 
@@ -95,6 +96,13 @@ GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 
 - 表单支持二次确认、取消弱网重试、409 后刷新以及返回管理列表；保存与取消互斥，取消成功后恢复已保存详情。
 - 本地 ESLint 零警告、103 项自动测试通过，首页/列表/表单 WXML、WXSS 编译通过；未部署，未做真机验收。
 - 部署验收清单和第 4 天范围见 [第三天交接说明](docs/a-line-day3.md)。
+
+## A 线冲刺第 4 天
+
+- `getShareCard` 校验本队队长及比赛状态；普通/TBD 卡片直达跟场响应页。表单支持预加载、同步分享、失败重试和缓存失效。
+- 新增 `CalendarManager.getCalendar/getMatchDetail`：按 `[fromTs, toTs)` 查询、单独返回 TBD 列表、保留取消标记、合并归档比分与 `hasMedia`，公开 DTO 不返回 openid 或媒体链接。
+- 本地 ESLint 零警告、121 项自动测试通过，表单 WXML/WXSS 原生编译通过；未部署、未做真机验收。
+- 接口细节、索引与部署清单、下一天安排见 [第四天交接说明](docs/a-line-day4.md)。
 
 ## A 线开工前确认
 

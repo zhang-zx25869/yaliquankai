@@ -76,6 +76,12 @@
     <button wx:if="{{!viewOnly && !saved}}" class="primary" bindtap="onSave" loading="{{saving}}" disabled="{{saving || conflict || confirmingCancel || cancelling || cancelRetryPending}}">{{saving ? '正在保存…' : retryPending ? '重试保存' : editing ? '保存修改' : '发布赛程'}}</button>
     <view wx:if="{{cancelRetryPending}}" class="notice">取消结果暂未确认。请重试同一次取消。</view>
     <button wx:if="{{canCancel && !saved}}" class="danger" bindtap="onCancel" loading="{{cancelling}}" disabled="{{saving || retryPending || conflict || confirmingCancel || cancelling}}">{{cancelling ? '正在取消…' : cancelRetryPending ? '重试取消比赛' : '取消比赛'}}</button>
+    <view wx:if="{{shareAvailable}}" class="panel">
+      <view class="hint">将已保存的赛程发给跟场经理人。</view>
+      <button class="primary" open-type="share" loading="{{shareLoading}}" disabled="{{!shareReady}}">{{shareLoading ? '正在准备分享…' : '分享赛程'}}</button>
+    </view>
+    <view wx:if="{{shareError}}" class="error">{{shareError}}</view>
+    <button wx:if="{{shareError && shareAvailable}}" class="secondary" bindtap="prefetchShare" disabled="{{shareLoading}}">重试加载分享信息</button>
     <button wx:if="{{saved && !editing}}" class="primary" bindtap="onCreateAnother">再发布一场</button>
     <button wx:if="{{saved && editing}}" class="primary" bindtap="onReload">重新加载并继续编辑</button>
     <button class="secondary" bindtap="onManage" disabled="{{saving || retryPending || confirmingCancel || cancelling || cancelRetryPending}}">返回本队赛程</button>

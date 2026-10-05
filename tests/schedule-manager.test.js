@@ -149,10 +149,12 @@ async function invoke(schedule, event) {
   }
 }
 
-test("implemented reads work while sharing remains a guarded placeholder", async () => {
+test("implemented reads and share configuration work", async () => {
   const schedule = loadScheduleManager();
   for (const action of ["getShareCard"]) {
-    assert.deepEqual(await invoke(schedule, { action, matchId: "match-1" }), { code: 501, message: `${action} 开发中` });
+    const response = await invoke(schedule, { action, matchId: "match-1" });
+    assert.equal(response.code, 0);
+    assert.equal(response.data.path, "/pages/respond/index?matchId=match-1");
   }
   for (const action of ["getMyMatches", "getMatchForEdit"]) {
     assert.equal((await invoke(schedule, { action, matchId: "match-1" })).code, 0);
@@ -745,4 +747,31 @@ test("cancel and edit with the same version cannot both succeed and old saves ca
       assert.equal(schedule.collections.MatchCollection[0].cellStatus, "cancelled");
     }
   }
+});
+
+test("captain share cards use respond for every allowed state, encode IDs and label TBD", async () => {
+  for (const cellStatus of ["pending", "confirmed", "help", "tbd"]) {
+    const stored = match({ _id: "match /?&中文", cellStatus, isTbd: cellStatus === "tbd" });
+    const schedule = loadScheduleManager({ matches: [stored] });
+    const result = await invoke(schedule, { action: "getShareCard", matchId: stored._id });
+    assert.equal(result.code, 0);
+    assert.deepEqual(Object.keys(result.data).sort(), ["path", "title"]);
+    assert.equal(result.data.path, `/pages/respond/index?matchId=${encodeURIComponent(stored._id)}`);
+    for (const text of [stored.sport, stored.teamName, stored.rival]) assert.ok(result.data.title.includes(text));
+    if (stored.isTbd) assert.ok(result.data.title.includes("时间待定"));
+    assert.equal(JSON.stringify(result).includes("openid"), false);
+  }
+});
+
+test("share guards reject terminal/archive/end-time states without relying on TimerChecker", async () => {
+  for (const fields of [
+    ...["cancelled", "settle", "dutyCancelled", "unknown"].map((cellStatus) => ({ cellStatus })),
+    { isArchived: true }, { endTime: Date.now() }, { endTime: null },
+  ]) {
+    const schedule = loadScheduleManager({ matches: [match(fields)] });
+    assert.equal((await invoke(schedule, { action: "getShareCard", matchId: "match-1" })).code, 409);
+  }
+  const crossTeam = loadScheduleManager({ matches: [match({ teamId: "team-b" })] });
+  assert.equal((await invoke(crossTeam, { action: "getShareCard", matchId: "match-1", teamId: "team-b" })).code, 403);
+  assert.equal((await invoke(loadScheduleManager(), { action: "getShareCard", matchId: "missing" })).code, 404);
 });
