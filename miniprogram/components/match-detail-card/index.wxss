@@ -20,13 +20,15 @@
   margin-right: 20rpx;
   flex-shrink: 0;
 }
-.mdc-summary { flex: 1; display: flex; flex-direction: column; }
+.mdc-summary { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: break-word; }
+.mdc-result { color: #7a1733; font-size: 26rpx; font-weight: 600; margin-top: 8rpx; }
 .mdc-vs { font-size: 30rpx; font-weight: 600; }
 .mdc-time { font-size: 24rpx; color: #999; margin-top: 6rpx; }
 .mdc-status { font-size: 26rpx; font-weight: 600; flex-shrink: 0; }
 
 /* 展开区 */
-.mdc-body { padding: 0 30rpx 30rpx; border-top: 2rpx solid #f2f2f2; }
+.mdc-body { padding: 0 30rpx 30rpx; border-top: 2rpx solid #f2f2f2; animation: expand-detail 0.2s ease; }
+@keyframes expand-detail { from { opacity: 0; transform: translateY(-8rpx); } to { opacity: 1; transform: translateY(0); } }
 .mdc-row { display: flex; padding: 14rpx 0; }
 .mdc-label {
   width: 140rpx;

@@ -1,6 +1,62 @@
-<view wx:if="{{isCaptain}}" class="captain-entry">
-  <view class="entry-title">队长赛程管理</view>
-  <button class="publish-button" bindtap="onPublish">发布赛程</button>
-  <button class="manage-button" bindtap="onManage">管理本队赛程</button>
+<view class="home">
+  <view class="page-heading">公共赛程</view>
+  <view class="page-subtitle">新雅书院 · 全部代表队 · 北京时间</view>
+  <view wx:if="{{isCaptain}}" class="captain-entry">
+    <view class="entry-title">队长赛程管理</view>
+    <view class="entry-actions">
+      <button class="publish-button" bindtap="onPublish">发布赛程</button>
+      <button class="manage-button" bindtap="onManage">管理本队赛程</button>
+    </view>
+  </view>
+  <view class="calendar">
+    <view class="month-navigation">
+      <button size="mini" class="month-arrow" data-offset="-1" bindtap="onShiftMonth" aria-label="上个月">‹</button>
+      <picker mode="date" fields="month" value="{{month}}" bindchange="onMonthChange">
+        <view class="month-title">{{month}} ▾</view>
+      </picker>
+      <button size="mini" class="month-arrow" data-offset="1" bindtap="onShiftMonth" aria-label="下个月">›</button>
+    </view>
+    <view class="calendar-grid">
+      <view wx:for="{{weekdays}}" wx:key="*this" class="weekday">{{item}}</view>
+      <view wx:for="{{days}}" wx:key="key" class="day-cell">
+        <button wx:if="{{item.day}}" class="day {{item.inRange ? 'day-range' : ''}} {{item.today ? 'day-today' : ''}} {{item.selected ? 'day-selected' : ''}}" data-date="{{item.key}}" bindtap="onSelectDay" aria-label="{{item.key}}">{{item.day}}</button>
+      </view>
+    </view>
+    <view class="calendar-actions">
+      <button size="mini" class="range-button {{mode === 'upcoming' ? 'range-active' : ''}}" bindtap="onToday">今天及后续</button>
+      <button size="mini" class="range-button {{mode === 'month' ? 'range-active' : ''}}" bindtap="onWholeMonth">查看整月</button>
+    </view>
+    <view class="calendar-hint">点击日期查看当天赛程，切换月份浏览历史赛况</view>
+  </view>
+  <view class="section-title">{{rangeLabel}}</view>
+  <view wx:if="{{loading}}" class="feedback">正在加载赛程…</view>
+  <view wx:elif="{{errorText}}" class="feedback">
+    <view>{{errorText}}</view>
+    <button size="mini" class="retry-button" bindtap="onRetry">重新加载</button>
+  </view>
+  <block wx:else>
+    <view class="section-count">共 {{matches.length}} 场 · 点击卡片展开详情</view>
+    <view wx:if="{{!matches.length}}" class="feedback">所选日期范围暂无比赛</view>
+    <view wx:for="{{matches}}" wx:key="_id">
+      <match-detail-card match="{{expandedId === item._id && detail ? detail : item}}" expanded="{{expandedId === item._id && !!detail}}" bind:toggle="onToggleMatch" />
+      <view wx:if="{{expandedId === item._id && detailLoading}}" class="detail-feedback">正在加载最新详情…</view>
+      <view wx:if="{{expandedId === item._id && detailError}}" class="detail-feedback">
+        <view>{{detailError}}</view>
+        <button size="mini" class="retry-button" bindtap="onRetryDetail">重试详情</button>
+        <button size="mini" class="retry-button" bindtap="onRetry">刷新赛程</button>
+      </view>
+    </view>
+    <view class="section-title">时间待定 <text class="count">{{tbdMatches.length}} 场</text></view>
+    <view class="section-count">不受所选日期范围限制</view>
+    <view wx:if="{{!tbdMatches.length}}" class="feedback">暂无时间待定的比赛</view>
+    <view wx:for="{{tbdMatches}}" wx:key="_id">
+      <match-detail-card match="{{expandedId === item._id && detail ? detail : item}}" expanded="{{expandedId === item._id && !!detail}}" bind:toggle="onToggleMatch" />
+      <view wx:if="{{expandedId === item._id && detailLoading}}" class="detail-feedback">正在加载最新详情…</view>
+      <view wx:if="{{expandedId === item._id && detailError}}" class="detail-feedback">
+        <view>{{detailError}}</view>
+        <button size="mini" class="retry-button" bindtap="onRetryDetail">重试详情</button>
+        <button size="mini" class="retry-button" bindtap="onRetry">刷新赛程</button>
+      </view>
+    </view>
+  </block>
 </view>
-<page-placeholder title="公共赛程" description="公共赛程日历正在建设中" />

@@ -7,6 +7,8 @@
     <view class="mdc-summary">
       <text class="mdc-vs">{{match.teamName}} vs {{match.rival}}</text>
       <text class="mdc-time">{{match.timeText || ''}}</text>
+      <text wx:if="{{match.location}}" class="mdc-time">{{match.location}}</text>
+      <text wx:if="{{match.score}}" class="mdc-result">{{match.score}} · {{match.result}}</text>
     </view>
     <text class="mdc-status" style="color: {{statusMeta.color || '#999'}}">{{statusMeta.label || ''}}</text>
   </view>
@@ -32,9 +34,9 @@
     </view>
 
     <!-- 跟场状态详情：如「部员XXX已确认」（看板点开可见，用例13） -->
-    <view class="mdc-row" wx:if="{{match.confirmerName}}">
+    <view class="mdc-row" wx:if="{{match.confirmerName || match.confirmerNickname}}">
       <text class="mdc-label">跟场人</text>
-      <text class="mdc-value mdc-confirmer">{{match.confirmerName}} 已确认</text>
+      <text class="mdc-value mdc-confirmer">{{match.confirmerName || match.confirmerNickname}} 已确认</text>
     </view>
 
     <!-- 已归档：比分与胜负（用例11/17） -->
