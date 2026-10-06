@@ -18,10 +18,10 @@ Component({
       type: Object,
       value: {},
       observer(m) {
-        if (m && m.cellStatus) {
-          const meta = STATUS_META[m.cellStatus] || {};
-          this.setData({ statusMeta: meta });
-        }
+        const meta = m && m.isArchived && m.cellStatus !== CELL_STATUS.CANCELLED
+          ? { color: "#777777", label: "已归档", desc: "比赛已结束，赛果已归档" }
+          : STATUS_META[m && m.cellStatus] || {};
+        this.setData({ statusMeta: meta });
       },
     },
     // 当前用户角色（页面传入），决定是否渲染管理按钮

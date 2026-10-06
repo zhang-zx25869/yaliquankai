@@ -33,7 +33,7 @@ yaliquankai/
 └── project.config.json
 ```
 
-**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；A 线第 4 天已完成分享预加载和 `CalendarManager.getCalendar/getMatchDetail` 首版，第 5 天接入首页公共日历；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`TeamManager`。仓库已有 `ArchiveManager`、`DashboardManager` 和 `TimerChecker`，本次 A 线未重新验收其云端部署。
+**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；A 线第 5 天已接入首页公共日历：日期/月范围切换、独立 TBD 区、最新详情展开和刷新重试均已完成本地实现；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`TeamManager`。仓库已有 `ArchiveManager`、`DashboardManager` 和 `TimerChecker`，本次 A 线未重新验收其云端部署。
 
 ## 环境信息
 
@@ -103,6 +103,13 @@ GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 
 - 新增 `CalendarManager.getCalendar/getMatchDetail`：按 `[fromTs, toTs)` 查询、单独返回 TBD 列表、保留取消标记、合并归档比分与 `hasMedia`，公开 DTO 不返回 openid 或媒体链接。
 - 本地 ESLint 零警告、121 项自动测试通过，表单 WXML/WXSS 原生编译通过；未部署、未做真机验收。
 - 接口细节、索引与部署清单、下一天安排见 [第四天交接说明](docs/a-line-day4.md)。
+
+## A 线冲刺第 5 天
+
+- 首页接入真实公共日历接口，支持北京时间日期/月切换、普通赛程和独立 TBD 列表，保留队长发布与管理入口。
+- 共用详情卡片展示地点、取消标记和归档比分；展开读取最新详情，支持加载、空态、独立重试及返回/下拉刷新，并丢弃过期响应。
+- 本地 ESLint 零警告、135 项自动测试通过，首页与卡片 WXML/WXSS 原生编译通过；未部署、未做模拟器视觉或真机验收。
+- 实现范围与验收清单见 [第五天交接说明](docs/a-line-day5.md)。
 
 ## A 线开工前确认
 
