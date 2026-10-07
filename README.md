@@ -33,7 +33,7 @@ yaliquankai/
 └── project.config.json
 ```
 
-**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；A 线第 5 天已接入首页公共日历：日期/月范围切换、独立 TBD 区、最新详情展开和刷新重试均已完成本地实现；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`TeamManager`。仓库已有 `ArchiveManager`、`DashboardManager` 和 `TimerChecker`，本次 A 线未重新验收其云端部署。
+**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；A 线第 6 天已完成发布→修改→分享→取消→首页刷新的本地整链路回归，并修复表单/列表隐藏后的旧读取与下拉刷新竞争；公共日历、独立 TBD 区和最新详情均已接入，开发环境与真机验收待完成；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`TeamManager`。仓库已有 `ArchiveManager`、`DashboardManager` 和 `TimerChecker`，本次 A 线未重新验收其云端部署。
 
 ## 环境信息
 
@@ -69,7 +69,7 @@ npm install
 
 ```bash
 npm run lint   # 静态检查小程序、云函数和测试代码
-npm test       # 运行状态常量、环境隔离和 Auth 事务测试
+npm test       # 运行权限、事务、赛程整链路与页面等自动化回归
 npm run check  # 依次执行 lint + test，提交前推荐运行
 ```
 
@@ -110,6 +110,14 @@ GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 
 - 共用详情卡片展示地点、取消标记和归档比分；展开读取最新详情，支持加载、空态、独立重试及返回/下拉刷新，并丢弃过期响应。
 - 本地 ESLint 零警告、135 项自动测试通过，首页与卡片 WXML/WXSS 原生编译通过；未部署、未做模拟器视觉或真机验收。
 - 实现范围与验收清单见 [第五天交接说明](docs/a-line-day5.md)。
+
+## A 线冲刺第 6 天
+
+- 新增共用内存数据库的整链路回归，串联实际页面、调用封装与赛程/日历云函数，覆盖发布、修改、分享配置、取消、首页刷新、TBD 迁移和权限隔离。
+- 验证落库后响应丢失的安全重试、多人编辑冲突，以及需求修改保留确认、基准变更清空确认。
+- 修复表单/管理列表隐藏后的旧读取写回，以及旧下拉刷新提前停止新请求提示的问题。
+- 本地 ESLint 零警告、145 项自动测试通过；未部署、未做开发环境或真机验收。
+- 回归范围、验证限制和第 7 天验收安排见 [第六天交接说明](docs/a-line-day6.md)。
 
 ## A 线开工前确认
 

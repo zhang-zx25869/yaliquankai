@@ -35,16 +35,24 @@ Page({
         ...([401, 403].includes(error.code) ? { authorized: false } : {}),
       });
     } finally {
-      if (sequence === this._loadSequence) this.setData({ ready: true });
+      if (sequence === this._loadSequence) {
+        this.setData({ ready: true });
+        wx.stopPullDownRefresh();
+      }
     }
   },
 
-  onUnload() {
+  onHide() { this.invalidateLoad(); },
+
+  onUnload() { this.invalidateLoad(); },
+
+  invalidateLoad() {
     this._loadSequence += 1;
+    wx.stopPullDownRefresh();
   },
 
-  async onPullDownRefresh() {
-    try { await this.onShow(); } finally { wx.stopPullDownRefresh(); }
+  onPullDownRefresh() {
+    return this.onShow();
   },
 
   onRetry() {
