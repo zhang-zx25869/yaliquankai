@@ -13,7 +13,7 @@
       <text class="guest-block-desc">跟场响应仅对已绑定的本队经理人开放。请到「我的」页输入激活码完成绑定。</text>
       <button class="guest-block-btn" bindtap="onGoBind">去绑定</button>
     </view>
-    <view wx:else class="loading"><text>无法获取比赛信息</text></view>
+    <view wx:else class="loading"><text>{{errorText || '无法获取比赛信息'}}</text><button bindtap="onRetry">重新加载</button></view>
   </block>
 
   <block wx:else>
@@ -65,8 +65,8 @@
       <block wx:if="{{myStatus === myStatusNone}}">
         <!-- 黄态：确认 + 没空 两个按钮（已开赛禁表态，云端 409 双保险） -->
         <block wx:if="{{match.cellStatus === cellStatusPending}}">
-          <button class="btn btn-primary" wx:if="{{!match.started}}" bindtap="onConfirm">确认跟场</button>
-          <button class="btn btn-plain" wx:if="{{!match.started}}" bindtap="onDecline">没空</button>
+          <button class="btn btn-primary" wx:if="{{!match.started}}" disabled="{{busy || retryPending}}" bindtap="onConfirm">确认跟场</button>
+          <button class="btn btn-plain" wx:if="{{!match.started}}" disabled="{{busy || retryPending}}" bindtap="onDecline">没空</button>
         </block>
         <!-- 红态：只显示确认（双通道——本队经理人任何时刻可回补），没空无意义隐藏 -->
         <block wx:elif="{{match.cellStatus === cellStatusHelp}}">
@@ -74,7 +74,7 @@
             <view class="my-dot" style="background: {{match.statusMeta.color}}" />
             <text class="my-state-text">{{redTip}}</text>
           </view>
-          <button class="btn btn-primary" wx:if="{{!match.started}}" bindtap="onConfirm">确认跟场</button>
+          <button class="btn btn-primary" wx:if="{{!match.started}}" disabled="{{busy || retryPending}}" bindtap="onConfirm">确认跟场</button>
         </block>
         <!-- 绿/橙：他人已确认或待结算——只读说明（补空白卡片） -->
         <block wx:else>
@@ -95,7 +95,7 @@
           <view class="my-dot" style="background: {{match.statusMeta.color}}" />
           <text class="my-state-text">{{match.cellStatus === cellStatusConfirmed ? '我已确认跟场' : '我已确认跟场 · 待提交赛果'}}</text>
         </view>
-        <button class="btn btn-warn" wx:if="{{match.cellStatus === cellStatusConfirmed && !match.started}}" bindtap="onCancelDuty">取消我的跟场</button>
+        <button class="btn btn-warn" wx:if="{{match.cellStatus === cellStatusConfirmed && !match.started}}" disabled="{{busy || retryPending}}" bindtap="onCancelDuty">取消我的跟场</button>
       </block>
 
       <!-- 已没空：黄态显示反悔按钮；红态也可反悔确认（回补通道） -->
@@ -104,17 +104,21 @@
           <view class="my-dot" style="background: {{match.statusMeta.color}}" />
           <text class="my-state-text">暂时没空，下次一定</text>
         </view>
-        <button class="btn btn-primary" wx:if="{{!match.started}}" bindtap="onConfirm">有空，确认跟场</button>
+        <button class="btn btn-primary" wx:if="{{!match.started}}" disabled="{{busy || retryPending}}" bindtap="onConfirm">有空，确认跟场</button>
       </block>
 
     </view>
 
     <!-- ── 区4：求助区（用例8，红态下全队经理人皆可生成转发，第一责任人仅文案指称） ── -->
-  <view class="card help-card" wx:if="{{(role === roleMember || role === roleAdmin) && match.cellStatus === cellStatusHelp && canHelp}}">
+  <view class="card help-card" wx:if="{{(role === roleMember || role === roleAdmin) && match.cellStatus === cellStatusHelp && canHelp && !match.started}}">
       <view class="section-title help-title">⚠️ 需要帮助</view>
-      <text class="help-desc">本队经理人全员没空，等待大群救场</text>
-      <button class="btn btn-danger" open-type="share">生成求助卡片并转发</button>
+      <text class="help-desc">本场暂无跟场人，等待有空的部员补位</text>
+      <button class="btn btn-danger" open-type="share" disabled="{{!shareReady || busy || retryPending}}" loading="{{shareLoading}}">生成求助卡片并转发</button>
     </view>
 
   </block>
+
+  <view wx:if="{{actionError}}" class="loading">{{actionError}}</view>
+  <button wx:if="{{retryPending}}" bindtap="onRetryAction" disabled="{{busy}}" loading="{{busy}}">重试同一次操作</button>
+  <view wx:if="{{shareError}}" class="loading">{{shareError}}<button bindtap="prefetchHelpCard" disabled="{{busy || retryPending || shareLoading}}">重试加载分享</button></view>
 </view>

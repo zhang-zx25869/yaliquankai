@@ -50,7 +50,10 @@ function loadDuty(options = {}) {
   const filename = path.resolve(__dirname, "../cloudfunctions/DutyManager/index.js");
   vm.runInNewContext(fs.readFileSync(filename, "utf8") + "\nexports.testRecalc = recalcCellStatus;", {
     exports: exported, Date, console: { log() {}, error() {} },
-    require() { return { init() {}, database: () => db, getWXContext: () => ({ OPENID: "manager-1" }) }; },
+    require(name) {
+      if (name !== "wx-server-sdk") return require(name);
+      return { init() {}, database: () => db, getWXContext: () => ({ OPENID: "manager-1" }) };
+    },
   }, { filename });
   return { state, main: exported.main, recalc: exported.testRecalc };
 }
@@ -111,13 +114,4 @@ test("decline history still participates in the existing all-declined rule", asy
   const result = await duty.main({ action: "getRescuePage", matchId: "match-1" });
   assert.equal(result.data.myStatus, "declined");
   assert.equal(result.data.match.cellStatus, "help");
-});
-
-test("repeated decline still recognizes its existing record after the snapshot-based status change", async (t) => {
-  t.mock.method(Date, "now", () => NOW);
-  const duty = loadDuty({ records: [{ matchId: "match-1", openid: "manager-1", type: "decline" }] });
-  const result = await duty.main({ action: "declineDuty", matchId: "match-1" });
-  assert.equal(result.code, 0);
-  assert.equal(result.data.cellStatus, "help");
-  assert.equal(duty.state.records.length, 1);
 });

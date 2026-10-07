@@ -42,18 +42,23 @@
 
     <view wx:if="{{loadingDuties}}" class="duty-empty">加载中...</view>
 
+    <view wx:elif="{{dutyError}}" class="duty-empty">{{dutyError}}<button bindtap="loadMyDuties">重新加载</button></view>
     <block wx:elif="{{myDuties.length}}">
       <match-detail-card
         wx:for="{{myDuties}}"
         wx:key="_id"
         match="{{item}}"
         role="{{userInfo.role}}"
-        show-actions
+        expanded="{{expandedId === item._id}}"
+        bind:toggle="onToggleDuty"
+        show-actions="{{!busy && !retryPending}}"
         bind:cancelduty="onCancelDuty"
       />
     </block>
 
     <view wx:else class="duty-empty">暂无进行中的跟场任务</view>
+    <view wx:if="{{actionError}}" class="duty-empty">{{actionError}}</view>
+    <button wx:if="{{retryPending}}" bindtap="onRetryAction" disabled="{{busy}}" loading="{{busy}}">重试同一次取消</button>
   </view>
 
 </view>

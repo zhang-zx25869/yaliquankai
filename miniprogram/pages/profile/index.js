@@ -1,145 +1,112 @@
-// pages/profile/index.js
-// B5 我的页（用例1 OpenIDLogin 展示 / 用例2 BindIdentity）
 const { call, getUser, waitForUser, setUser } = require("../../utils/call");
-const { ROLE, ROLE_META, HOURS, CELL_STATUS } = require("../../utils/status");
+const { ROLE, ROLE_META, CELL_STATUS } = require("../../utils/status");
+const { formatMatch, activeMatch, identityKey, isMember, confirmModal } = require("../../utils/duty-page");
+const { createRequestId } = require("../../utils/schedule-form");
 
 Page({
   data: {
-    userInfo: { role: ROLE.GUEST },
-    roleGuest: ROLE.GUEST,   // WXML 常量注入（禁止裸字符串，接口约定第九节）
-    roleMember: ROLE.MEMBER,
-    roleAdmin: ROLE.ADMIN,
-    roleLabel: "游客",
-    roleDesc: "仅可浏览公开信息",
-    codeInput: "",   // 激活码输入框
-    binding: false,
-    myDuties: [],    // 我的跟场列表（member/admin 可见）
-    loadingDuties: false,
+    userInfo: { role: ROLE.GUEST }, roleGuest: ROLE.GUEST, roleMember: ROLE.MEMBER, roleAdmin: ROLE.ADMIN,
+    roleLabel: "游客", roleDesc: "仅可浏览公开信息", codeInput: "", binding: false,
+    myDuties: [], loadingDuties: false, dutyError: "", expandedId: "",
+    busy: false, retryPending: false, actionError: "",
   },
-
+  onLoad() { this._seq = 0; },
   onShow() {
-    this.refreshUser();
+    this._active = true;
+    this.setData({ busy: Boolean(this._busy), retryPending: Boolean(this._pending), actionError: this._actionError || "" });
+    return this.refreshUser();
   },
-
-  // 从全局缓存刷新身份显示
-  refreshUser() {
-    const settle = () => {
-      const u = getUser();
-      const meta = ROLE_META[u.role] || ROLE_META[ROLE.GUEST];
-      this.setData({ userInfo: u, roleLabel: meta.label, roleDesc: meta.desc });
-      if(u.role === ROLE.MEMBER || u.role === ROLE.ADMIN) {
-        this.loadMyDuties();
-      } else {
-        this.setData({ myDuties: [] });
-      }
-    };
-    waitForUser().then(settle);
-  },
-
-  // —— B5b 我的跟场（用例10a）：当前我跟场的、未完结未归档比赛 ——
-  async loadMyDuties() {
-    this.setData({ loadingDuties: true });
+  onHide() { this.invalidate(); },
+  onUnload() { this.invalidate(); },
+  invalidate() { this._active = false; this._seq = (this._seq || 0) + 1; wx.stopPullDownRefresh(); },
+  async refreshUser() {
+    const seq = this._seq = (this._seq || 0) + 1;
+    this.setData({ myDuties: [], expandedId: "", loadingDuties: true, dutyError: "" });
+    let identity;
+    const current = () => this._active && seq === this._seq && (!identity || identity === identityKey());
     try {
-      const res = await call("DutyManager", { action:"getMyDuties" });
-      this.setData({ myDuties: (res.list || []).map((raw) => this.formatMatch(raw)) });
-    } catch (_e) {
-      // 错误提示已由 call 统一 toast；列表保持原样，下次 onShow 重试
+      await waitForUser();
+      if (!current()) return;
+      identity = identityKey();
+      const user = getUser(), meta = ROLE_META[user.role] || ROLE_META[ROLE.GUEST];
+      this.setData({ userInfo: user, roleLabel: meta.label, roleDesc: meta.desc });
+      if (this._pending && this._pending.identity !== identity) {
+        this._pending = null; this._actionError = ""; this.setData({ retryPending: false, actionError: "" });
+      }
+      if (!isMember()) return;
+      const result = await call("DutyManager", { action: "getMyDuties" }, { loading: false, toast: false });
+      if (!current()) return;
+      if (!result || !Array.isArray(result.list)) throw new Error("跟场列表异常，请重试");
+      this.setData({ myDuties: result.list.map(formatMatch) });
+    } catch (error) {
+      if (current()) this.setData({ dutyError: error.message || "跟场列表加载失败，请重试" });
     } finally {
-      this.setData({ loadingDuties: false });
+      if (this._active && seq === this._seq) { this.setData({ loadingDuties: false }); wx.stopPullDownRefresh(); }
     }
   },
-
-  // 原始 DTO → 组件展示对象（与 respond 页同款映射，组件零改动）
-  // 取消按钮条件：仅绿态且未开赛（settle 待结算、已开赛的跟场均不可取消，云端 409 双保险）
-  formatMatch(raw) {
-    return {
-      ...raw,
-      confirmerName: raw.confirmerNickname || "",
-      myConfirmed: raw.cellStatus === CELL_STATUS.CONFIRMED && raw.matchTime > Date.now(),
-    };
+  loadMyDuties() { return this.refreshUser(); },
+  onPullDownRefresh() { return this.refreshUser(); },
+  onToggleDuty(event) {
+    const id = event.detail.id;
+    if (this.data.myDuties.some((match) => match._id === id)) this.setData({ expandedId: this.data.expandedId === id ? "" : id });
   },
-
-  // 取消我的跟场（用例10，事件来自 match-detail-card 的 cancelduty）
-  async onCancelDuty(e) {
-    const id = e.detail.id;
-    const m = this.data.myDuties.find((x) => x._id ===id);
-    if(!m) return;
-
-    // 已开赛/settle 本地早退（云端 409 双保险，防列表数据滞后误点）；
-    // myConfirmed 在 formatMatch 已含"绿态且未开赛"条件，这里只拦数据滞后的兜底
-    if (m.matchTime <= Date.now()) {
-      wx.showToast({ title: "比赛已开始，无法取消", icon: "none" });
-      return;
-    }
-
-    // 48h 安全锁：临期取消大概率导致无人救场，强提醒
-    const within48h = m.matchTime - Date.now() < HOURS.FORCE_RED * 3600 * 1000;
-    const content = within48h
-    ? "距开赛不足 48 小时，取消后需要大群救场，确定取消吗？"  
-    : "确定取消本场跟场吗？名额将释放给其他经理人。";
-
-    const { confirm } = await wx.showModal({
-      title: "取消跟场",
-      content,
-      confirmText: "仍要取消",
-      confirmColor: "#7a1733",
-    });
-    if (!confirm) return;
-
+  onRetryAction() { return this._pending ? this.onCancelDuty({ detail: { id: this._pending.payload.matchId } }, true) : undefined; },
+  async onCancelDuty(event, retry = false) {
+    if (!this._active || this._busy || !isMember() || (this._pending && !retry)) return;
+    const identity = identityKey(), seq = this._seq, id = event.detail.id;
+    const visible = () => this._active && seq === this._seq && identity === identityKey();
+      const sameIdentity = () => this._active && identity === identityKey();
+    if (retry && this._pending?.identity !== identity) return;
+    const match = this.data.myDuties.find((row) => row._id === id);
+    if (!retry && (!activeMatch(match) || match.cellStatus !== CELL_STATUS.CONFIRMED)) return;
+    this._busy = true; this._actionError = "";
+    this.setData({ busy: true, actionError: "" });
+    let result;
     try {
-      const res = await call("DutyManager", { action: "cancelMyDuty", matchId: id });
-      await this.loadMyDuties(); // 重拉列表（该场已不属于我，自动消失）
-      // 取消得红：强引导跳该场响应页——红态求助区（用例8）可直接生成求助卡片转发
-      if (res.canHelp) {
-        const nav = await wx.showModal({
-          title: "本场需要补位",
-          content: "取消后本场已进入求助状态，请立即转发求助卡片到体育部大群，并私聊部长报备。",
-          confirmText: "去转发",
-          cancelText: "稍后处理",
-          confirmColor: "#7a1733",
-        });
-        if (nav.confirm) {
-          wx.navigateTo({ url: `/pages/respond/index?matchId=${id}` });
-        } else {
-          wx.showToast({ title: "已取消跟场", icon: "none" });
-        }
-      } else {
-        // 回黄场景：名额已释放，正常提示
-        wx.showToast({ title: "已取消跟场", icon: "success" });
+      if (!retry) {
+        const { confirm } = await wx.showModal(confirmModal(match, "cancelMyDuty"));
+        if (!confirm || !visible() || !activeMatch(match)) return;
+        this._pending = { identity, payload: { action: "cancelMyDuty", matchId: id, requestId: createRequestId(), dutyToken: match.dutyToken }, teamId: match.teamId };
       }
-    } catch (_e) {
-      // 404 无确认记录 / 409 终态等，toast 已由 call 统一处理
+      const pending = this._pending;
+      result = await call("DutyManager", pending.payload, { loading: false, toast: false });
+      if (!result || !Object.values(CELL_STATUS).includes(result.cellStatus)) throw new Error("取消结果暂未确认，请重试");
+      this._pending = null;
+      if (sameIdentity()) {
+        wx.showToast({ title: "已取消跟场", icon: "success" });
+        if (result.cellStatus === CELL_STATUS.HELP) {
+          // 本队经理人去响应页承接求助；跨队救场者回救场页，不能冒用本队分享权限。
+          const page = result.canHelp ? "respond" : "rescue";
+          wx.navigateTo({ url: `/pages/${page}/index?matchId=${encodeURIComponent(id)}` });
+        }
+      }
+    } catch (error) {
+      if ([400, 401, 403, 404, 409].includes(error.code)) this._pending = null;
+      this._actionError = identity === identityKey() ? error.message || "网络异常，请重试同一次取消" : "";
+    } finally {
+      this._busy = false;
+      if (identity !== identityKey()) { this._pending = null; this._actionError = ""; }
+      if (this._active) {
+        this.setData({ busy: false, retryPending: Boolean(this._pending), actionError: this._actionError });
+        await this.refreshUser();
+      }
     }
   },
-
-
-  onCodeInput(e) {
-    this.setData({ codeInput: e.detail.value });
-  },
-
-  // 用例2：一次性激活码绑定
+  onCodeInput(event) { if (!this.data.binding) this.setData({ codeInput: event.detail.value }); },
   async onBind() {
+    if (this.data.binding || !this._active) return;
     const code = this.data.codeInput.trim();
-    if (!code) {
-      wx.showToast({ title: "请输入激活码", icon: "none" });
-      return;
-    }
+    if (!code) { wx.showToast({ title: "请输入激活码", icon: "none" }); return; }
     this.setData({ binding: true });
     try {
       const user = await call("AuthManager", { action: "bindIdentity", code });
       setUser(user);
-      this.setData({ codeInput: "" });
-      const meta = ROLE_META[user.role] || {};
-      wx.showModal({
-        title: "绑定成功",
-        content: `当前身份：${meta.label || user.role}`,
-        showCancel: false,
-      });
-      this.refreshUser();
-    } catch (_e) {
-      // 错误提示已由 call 统一 toast
-    } finally {
-      this.setData({ binding: false });
-    }
+      if (this._active) {
+        this.setData({ codeInput: "" });
+        wx.showModal({ title: "绑定成功", content: `当前身份：${(ROLE_META[user.role] || {}).label || user.role}`, showCancel: false });
+        await this.refreshUser();
+      }
+    } catch (_error) { /* call 已提示 */ }
+    finally { this.setData({ binding: false }); }
   },
 });

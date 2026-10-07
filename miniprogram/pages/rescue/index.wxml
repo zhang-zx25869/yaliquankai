@@ -13,7 +13,7 @@
       <text class="guest-block-desc">救场接单仅对已绑定的部员开放。请到「我的」页输入激活码完成绑定。</text>
       <button class="guest-block-btn" bindtap="onGoBind">去绑定</button>
     </view>
-    <view wx:else class="loading"><text>无法获取比赛信息</text></view>
+    <view wx:else class="loading"><text>{{errorText || '无法获取比赛信息'}}</text><button bindtap="onRetry">重新加载</button></view>
   </block>
 
   <block wx:else>
@@ -24,7 +24,7 @@
       <text class="success-title">救场成功！</text>
       <text class="success-desc">体育部不会忘记你做的一切……</text>
       <!-- 取消救场：释放名额回黄色待确认（已开赛禁取消，云端 409 双保险） -->
-      <button wx:if="{{(role === roleMember || role === roleAdmin) && !match.started}}" class="btn btn-cancel" bindtap="onCancelRescue">取消我的救场</button>
+      <button wx:if="{{(role === roleMember || role === roleAdmin) && !match.started}}" class="btn btn-cancel" disabled="{{busy || retryPending}}" bindtap="onCancelRescue">取消我的救场</button>
     </view>
 
     <block wx:else>
@@ -73,10 +73,14 @@
         class="btn btn-danger"
       wx:if="{{role === roleMember || role === roleAdmin}}"
         bindtap="onRescue"
-        disabled="{{match.cellStatus !== cellStatusHelp || match.started}}"
+        disabled="{{busy || retryPending || match.cellStatus !== cellStatusHelp || match.started}}"
       >我来救场</button>
 
     </block>
 
   </block>
+
+  <view wx:if="{{actionError}}" class="loading">{{actionError}}</view>
+  <button wx:if="{{retryPending}}" bindtap="onRetryAction" disabled="{{busy}}" loading="{{busy}}">重试同一次操作</button>
+  <view wx:if="{{shareError}}" class="loading">{{shareError}}<button bindtap="prefetchHelpCard" disabled="{{busy || retryPending || shareLoading}}">重试加载分享</button></view>
 </view>
