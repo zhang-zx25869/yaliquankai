@@ -21,6 +21,7 @@ function loadPage(relativePath, options = {}) {
   const toasts = [];
   const routes = [];
   const modals = [];
+  let refreshStops = 0;
   const context = {
     Date,
     Page(value) { definition = value; },
@@ -55,7 +56,7 @@ function loadPage(relativePath, options = {}) {
       navigateTo(value) { routes.push(value); },
       redirectTo(value) { routes.push(value); },
       navigateBack(value) { routes.push(value); },
-      stopPullDownRefresh() {},
+      stopPullDownRefresh() { refreshStops += 1; },
       switchTab(value) { routes.push(value); },
     },
   };
@@ -69,7 +70,7 @@ function loadPage(relativePath, options = {}) {
       target[parts.at(-1)] = value;
     }
   };
-  return { page, calls, shareCalls, toasts, routes, modals, setUser(value) { user = value; } };
+  return { page, calls, shareCalls, toasts, routes, modals, get refreshStops() { return refreshStops; }, setUser(value) { user = value; } };
 }
 
 test("form dates use Shanghai time and reject calendar rollovers", () => {
@@ -794,4 +795,80 @@ test("successful edits prefetch fresh titles and failed cloud authorization neve
     assert.equal(denied.page.data.shareAvailable, false);
     assert.equal(denied.page.onShareAppMessage().path, "/pages/index/index");
   }
+});
+
+test("hidden edit load is discarded so returning fetches the latest saved version", async (t) => {
+  t.mock.method(Date, "now", () => NOW);
+  let release, reads = 0;
+  const { page } = loadPage("schedule-form", { call: async () => {
+    reads += 1;
+    if (reads === 1) return new Promise((resolve) => { release = resolve; });
+    return { match: editDTO({ version: 6, rival: "最新对手" }) };
+  } });
+  page.onLoad({ matchId: "match-1" });
+  const first = page.onShow();
+  while (!release) await Promise.resolve();
+  page.onHide();
+  release({ match: editDTO({ version: 5, rival: "旧对手" }) });
+  await first;
+  assert.equal(page._loaded, false);
+  assert.equal(page.data.form.rival, "");
+  await page.onShow();
+  assert.equal(reads, 2);
+  assert.equal(page.data.form.rival, "最新对手");
+  assert.equal(page._originalMatch.version, 6);
+});
+
+test("hidden form does not continue identity loading into an edit request", async () => {
+  let release;
+  const { page, calls } = loadPage("schedule-form", {
+    waitForUser: () => new Promise((resolve) => { release = resolve; }),
+  });
+  page.onLoad({ matchId: "match-1" });
+  const show = page.onShow();
+  page.onHide();
+  release();
+  await show;
+  assert.equal(calls.length, 0);
+  assert.equal(page.data.authorized, false);
+});
+
+test("hidden or unloaded management list discards late success and failure responses", async () => {
+  for (const lifecycle of ["onHide", "onUnload"]) {
+    for (const fails of [false, true]) {
+      let release;
+      const context = loadPage("schedule-list", { call: () => new Promise((resolve, reject) => {
+        release = () => fails ? reject(new Error("旧错误")) : resolve({ list: [{ _id: "old", cellStatus: "pending" }] });
+      }) });
+      context.page.onLoad();
+      const show = context.page.onShow();
+      while (!release) await Promise.resolve();
+      context.page[lifecycle]();
+      const state = structuredClone(context.page.data);
+      const stops = context.refreshStops;
+      release();
+      await show;
+      assert.deepEqual(structuredClone(context.page.data), state);
+      assert.equal(context.refreshStops, stops);
+    }
+  }
+});
+
+test("an older list refresh cannot stop the newer refresh indicator", async () => {
+  const pending = [];
+  const context = loadPage("schedule-list", { call: () => new Promise((resolve) => pending.push(resolve)) });
+  context.page.onLoad();
+  const first = context.page.onPullDownRefresh();
+  while (pending.length < 1) await Promise.resolve();
+  const second = context.page.onPullDownRefresh();
+  while (pending.length < 2) await Promise.resolve();
+  const stops = context.refreshStops;
+  pending[0]({ list: [{ _id: "old", cellStatus: "pending" }] });
+  await first;
+  assert.equal(context.refreshStops, stops);
+  assert.equal(context.page.data.ready, false);
+  pending[1]({ list: [{ _id: "latest", cellStatus: "cancelled" }] });
+  await second;
+  assert.equal(context.refreshStops, stops + 1);
+  assert.equal(context.page.data.list[0]._id, "latest");
 });

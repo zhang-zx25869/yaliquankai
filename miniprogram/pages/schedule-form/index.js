@@ -153,6 +153,8 @@ Page({
 
   onHide() {
     this._visible = false;
+    // 丢弃隐藏期间到达的身份/编辑读取，返回时仍会重新加载；保留保存重试请求。
+    this._loadSequence += 1;
     this.invalidateShare();
   },
 
