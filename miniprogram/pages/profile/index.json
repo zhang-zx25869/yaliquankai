@@ -1,5 +1,6 @@
 {
   "usingComponents": {
     "match-detail-card": "/components/match-detail-card/index"
-  }
+  },
+  "enablePullDownRefresh": true
 }
