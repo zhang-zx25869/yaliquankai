@@ -1,0 +1,10 @@
+.schedule-list { padding: 32rpx; padding-bottom: 64rpx; }
+.panel { background: #fff; border-radius: 20rpx; padding: 32rpx; margin-top: 24rpx; }
+.heading { display: flex; align-items: center; justify-content: space-between; }
+.title { font-size: 32rpx; font-weight: bold; color: #333; }
+.status { font-size: 25rpx; flex-shrink: 0; margin-left: 16rpx; }
+.rival { font-size: 30rpx; color: #333; margin-top: 20rpx; }
+.hint, .notice { font-size: 26rpx; color: #777; line-height: 1.6; margin-top: 16rpx; }
+.primary { background: #7a1733; color: #fff; border-radius: 12rpx; font-size: 30rpx; }
+.secondary { margin-top: 24rpx; color: #7a1733; background: #fff; font-size: 28rpx; }
+.error { color: #b42318; font-size: 26rpx; margin-top: 24rpx; }

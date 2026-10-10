@@ -1,0 +1,9 @@
+{
+  "name": "SeedDev",
+  "version": "1.0.0",
+  "description": "临时造数脚本（联调用，勿留生产）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}
