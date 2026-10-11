@@ -36,7 +36,7 @@
           <view class="title">时间待定（TBD）</view>
           <view class="hint">开启后无需填写开始和结束时间。</view>
         </view>
-        <switch color="#7a1733" checked="{{form.isTbd}}" bindchange="onTbdChange" disabled="{{saving || retryPending || saved || viewOnly || conflict || confirmingCancel || cancelling || cancelRetryPending}}" />
+        <switch color="#614961" checked="{{form.isTbd}}" bindchange="onTbdChange" disabled="{{saving || retryPending || saved || viewOnly || conflict || confirmingCancel || cancelling || cancelRetryPending}}" />
       </view>
       <view wx:if="{{form.isTbd}}" class="notice">比赛时间待定，确定时间后再更新赛程。</view>
       <view class="field {{form.isTbd ? 'muted' : ''}}">
@@ -67,7 +67,7 @@
       <view class="hint">可多选，无需求可以不勾选。</view>
       <checkbox-group bindchange="onDemandsChange">
         <label wx:for="{{demandOptions}}" wx:key="value" class="demand">
-          <checkbox value="{{item.value}}" checked="{{item.checked}}" color="#7a1733" disabled="{{saving || retryPending || saved || viewOnly || conflict || confirmingCancel || cancelling || cancelRetryPending}}" />
+          <checkbox value="{{item.value}}" checked="{{item.checked}}" color="#614961" disabled="{{saving || retryPending || saved || viewOnly || conflict || confirmingCancel || cancelling || cancelRetryPending}}" />
           <text>{{item.value}}</text>
         </label>
       </checkbox-group>

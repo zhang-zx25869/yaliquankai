@@ -1,0 +1,9 @@
+{
+  "name": "TeamManager",
+  "version": "1.0.0",
+  "description": "代表队栏目：队伍列表与按队检索赛程/历史赛况（用例19）",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

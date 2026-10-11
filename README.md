@@ -10,7 +10,7 @@ yaliquankai/
 │   ├── app.js / app.json     # 全局入口：云环境初始化 + 免密静默登录
 │   ├── pages/
 │   │   ├── index/            # B2 首页·公共赛程日历（用例16/17）【A·赛程线】
-│   │   ├── team/             # B3 队伍栏目（用例19）【收尾】
+│   │   ├── team/             # B3 队伍栏目（用例19）【已实装】
 │   │   ├── dashboard/        # B4 四色看板（用例13/14/15）【C·看板线】
 │   │   ├── profile/          # B5 我的·身份与激活码绑定（用例1/2）【已完成】
 │   │   ├── respond/          # B6 跟场响应页（用例6/7/8/10）【B·跟场线·已完成】
@@ -29,11 +29,15 @@ yaliquankai/
 │   ├── AuthManager/          # C1 身份认证【已完成】
 │   ├── ScheduleManager/      # C2 赛程管理【查询、新建、编辑、取消与分享已实装】
 │   ├── CalendarManager/      # C6 公共赛程【日期范围查询与详情已实装】
-│   └── DutyManager/          # C3 跟场任务【B·已完成：9 action 已实装】
+│   ├── DutyManager/          # C3 跟场任务【B·已完成：9 action 已实装】
+│   ├── DashboardManager/     # C5 看板与运营者裁决（用例13/14/15）
+│   ├── ArchiveManager/       # C4 赛后归档（用例11/12）
+│   ├── TimerChecker/         # C8 定时巡检（48h拉红 / 到点转橙，每小时）
+│   └── TeamManager/          # C7 代表队栏目（用例19）【已实装】
 └── project.config.json
 ```
 
-**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；A 线第 6 天已完成发布→修改→分享→取消→首页刷新的本地整链路回归，并修复表单/列表隐藏后的旧读取与下拉刷新竞争；公共日历、独立 TBD 区和最新详情均已接入，开发环境与真机验收待完成；媒体读取 `getMediaLink` 留到归档收尾阶段。待创建的业务云函数：`TeamManager`。仓库已有 `ArchiveManager`、`DashboardManager` 和 `TimerChecker`，本次 A 线未重新验收其云端部署。
+**进度**：AuthManager、DutyManager（B·跟场线，9 action 已实装）已完成；`ScheduleManager` 已实装本队赛程查询、原始数据读取、普通/TBD 新建、事务编辑与取消，首页管理入口和本队列表已接通；公共日历、独立 TBD 区和最新详情均已接入；看板/归档/定时巡检（`DashboardManager`、`ArchiveManager`、`TimerChecker`）与代表队栏目（`TeamManager` + `pages/team/` 两级浏览：队伍列表 → 未开始赛程 + 历史赛况，本队队长显示管理入口）已实装并通过全量本地回归（2026-10-11：ESLint 零警告、186 项测试通过）。媒体读取 `getMediaLink` 留到媒体收尾阶段。
 
 ## 环境信息
 
@@ -125,6 +129,13 @@ GitHub Actions 会在向 `main` / `dev` 推送或发起 PR 时使用 Node.js 24 
 - 响应页、救场页和我的跟场补齐异步失效、操作锁、错误重试和分享缓存；接通卡片展开与 admin 本人取消。
 - 分页读取、北京时间、权限和 DTO 回归已补齐。ESLint 零警告，全量 174 项测试通过，相关 WXML/WXSS 原生编译通过。
 - **需重新部署 DutyManager 并编译前端**；本轮未部署、未做真机验收，详情见 [B 线交接说明](docs/b-line-hardening.md)。
+
+## 收尾阶段：代表队栏目（2026-10-11）
+
+- 新建 `cloudfunctions/TeamManager`：`getTeamList`（启用队伍按 sortOrder 排序）与 `getTeamMatches`（未开始赛程 + 历史赛况拆分，归档合并比分/胜负/媒体标记，DTO 全脱敏）。
+- 重写 `pages/team/`：队伍列表 → 选队两级浏览，复用共用详情卡片展开最新详情；本队队长显示赛程管理入口；加载/空态/失败重试/下拉刷新对齐首页模式。
+- 新增云函数与页面两级测试 12 项，共享夹具挂载 TeamManager。全量 ESLint 零警告、186 项测试通过。
+- **需在开发者工具部署 TeamManager（新函数）并编译前端**；云端联调与真机验收待完成。
 
 ## A 线开工前确认
 

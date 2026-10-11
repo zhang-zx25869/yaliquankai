@@ -14,13 +14,13 @@
 .muted { opacity: 0.45; }
 .demand { display: flex; align-items: center; margin-top: 24rpx; font-size: 28rpx; }
 .demand text { margin-left: 12rpx; }
-.primary { background: #7a1733; color: #fff; border-radius: 12rpx; font-size: 30rpx; margin-top: 24rpx; }
-.primary[disabled] { background: #b88695; color: #fff; }
-.secondary { color: #7a1733; font-size: 28rpx; }
+.primary { background: #614961; color: #fff; border-radius: 12rpx; font-size: 30rpx; margin-top: 24rpx; }
+.primary[disabled] { background: #a596a6; color: #fff; }
+.secondary { color: #614961; font-size: 28rpx; }
 .notice { color: #777; font-size: 26rpx; line-height: 1.6; margin: 24rpx 0; }
 .error { color: #b42318; font-size: 26rpx; line-height: 1.6; margin-top: 24rpx; }
 .status { font-size: 28rpx; font-weight: bold; margin-top: 16rpx; }
-.success { border-left: 8rpx solid #7a1733; }
+.success { border-left: 8rpx solid #614961; }
 
 .danger { margin-top: 24rpx; color: #b42318; background: #fff; font-size: 30rpx; }
 .secondary { margin-top: 24rpx; }

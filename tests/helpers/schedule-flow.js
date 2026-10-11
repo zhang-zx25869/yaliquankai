@@ -8,7 +8,7 @@ const vm = require("node:vm");
 function createScheduleFlow(options = {}) {
   const rows = {
     UserCollection: [{ _id: "captain-a", openid: "private-captain", role: "captain", teamId: "team-a" }],
-    TeamCollection: [{ _id: "team-a", teamName: "测试A-队伍", enabled: true }],
+    TeamCollection: [{ _id: "team-a", teamName: "测试A-队伍", sport: "排球", enabled: true, sortOrder: 1 }],
     MatchCollection: [], DutyRecordCollection: [], ArchiveCollection: [],
   };
   const condition = (test) => ({ test, and(other) { return condition((value) => test(value) && other.test(value)); } });
@@ -110,7 +110,7 @@ function createScheduleFlow(options = {}) {
     return module.exports;
   }
   const cloud = { init() {}, database: () => database, getWXContext: () => ({ OPENID: openid }) };
-  const managers = Object.fromEntries(["ScheduleManager", "CalendarManager", "DutyManager"].map((name) => [name,
+  const managers = Object.fromEntries(["ScheduleManager", "CalendarManager", "DutyManager", "TeamManager"].map((name) => [name,
     loadModule(`cloudfunctions/${name}/index.js`, { "wx-server-sdk": cloud }),
   ]));
   const wx = {

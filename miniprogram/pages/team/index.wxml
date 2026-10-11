@@ -1,4 +1,83 @@
-<page-placeholder
-  title="代表队栏目"
-  description="代表队赛程与历史赛况正在建设中"
-/>
+<!-- B3 代表队栏目（用例19）—— 收尾阶段 -->
+<view class="home">
+
+  <!-- ── 一级视图：队伍列表 ── -->
+  <block wx:if="{{!teamId}}">
+    <view class="page-heading">代表队</view>
+    <view class="page-subtitle">新雅书院 · 全部代表队 · 按分类检索赛事资料</view>
+
+    <view wx:if="{{showManage}}" class="captain-entry">
+      <view class="entry-title">你是本队队长</view>
+      <view class="entry-actions">
+        <button class="manage-button" bindtap="onManage">管理本队赛程</button>
+      </view>
+    </view>
+
+    <view wx:if="{{listLoading}}" class="feedback">正在加载队伍…</view>
+    <view wx:elif="{{listError}}" class="feedback">
+      <view>{{listError}}</view>
+      <button size="mini" class="retry-button" bindtap="loadTeams">重新加载</button>
+    </view>
+    <view wx:elif="{{!teams.length}}" class="feedback">暂无代表队数据</view>
+    <view wx:else class="team-list">
+      <view class="section-count">共 {{teams.length}} 支队伍 · 点击查看赛事资料</view>
+      <button
+        wx:for="{{teams}}"
+        wx:key="teamId"
+        class="team-card"
+        data-id="{{item.teamId}}"
+        data-name="{{item.teamName}}"
+        data-sport="{{item.sport}}"
+        bindtap="onSelectTeam"
+      >
+        <view class="team-name">{{item.teamName}}</view>
+        <view class="team-sport">{{item.sport}}</view>
+      </button>
+    </view>
+  </block>
+
+  <!-- ── 二级视图：该队赛程 + 历史赛况 ── -->
+  <block wx:else>
+    <view class="team-header">
+      <button size="mini" class="back-button" bindtap="onBackToTeams">‹ 全部队伍</button>
+      <view class="page-heading">{{teamName}}</view>
+      <view class="page-subtitle">{{sport}} · 未开始赛程与历史赛况</view>
+      <view wx:if="{{showManage}}" class="entry-actions">
+        <button size="mini" class="manage-button" bindtap="onManage">管理本队赛程</button>
+      </view>
+    </view>
+
+    <view wx:if="{{matchLoading}}" class="feedback">正在加载赛程…</view>
+    <view wx:elif="{{matchError}}" class="feedback">
+      <view>{{matchError}}</view>
+      <button size="mini" class="retry-button" bindtap="onRetryMatches">重新加载</button>
+    </view>
+    <block wx:else>
+      <!-- 未开始赛程（含 TBD 与已取消只读项） -->
+      <view class="section-title">未开始赛程 <text class="count">{{upcoming.length}} 场</text></view>
+      <view wx:if="{{!upcoming.length}}" class="feedback">暂无赛程计划</view>
+      <view wx:for="{{upcoming}}" wx:key="_id">
+        <match-detail-card match="{{expandedId === item._id && detail ? detail : item}}" expanded="{{expandedId === item._id && !!detail}}" bind:toggle="onToggleMatch" />
+        <view wx:if="{{expandedId === item._id && detailLoading}}" class="detail-feedback">正在加载最新详情…</view>
+        <view wx:if="{{expandedId === item._id && detailError}}" class="detail-feedback">
+          <view>{{detailError}}</view>
+          <button size="mini" class="retry-button" bindtap="onRetryDetail">重试详情</button>
+          <button size="mini" class="retry-button" bindtap="onRetryMatches">刷新赛程</button>
+        </view>
+      </view>
+
+      <!-- 历史赛况（已归档，含比分/胜负/媒体标记） -->
+      <view class="section-title">历史赛况 <text class="count">{{archived.length}} 场</text></view>
+      <view wx:if="{{!archived.length}}" class="feedback">暂无历史赛况</view>
+      <view wx:for="{{archived}}" wx:key="_id">
+        <match-detail-card match="{{expandedId === item._id && detail ? detail : item}}" expanded="{{expandedId === item._id && !!detail}}" bind:toggle="onToggleMatch" />
+        <view wx:if="{{expandedId === item._id && detailLoading}}" class="detail-feedback">正在加载最新详情…</view>
+        <view wx:if="{{expandedId === item._id && detailError}}" class="detail-feedback">
+          <view>{{detailError}}</view>
+          <button size="mini" class="retry-button" bindtap="onRetryDetail">重试详情</button>
+          <button size="mini" class="retry-button" bindtap="onRetryMatches">刷新赛程</button>
+        </view>
+      </view>
+    </block>
+  </block>
+</view>

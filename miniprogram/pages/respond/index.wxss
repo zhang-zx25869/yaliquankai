@@ -89,13 +89,13 @@
 }
 .stat-row:last-child { border-bottom: none; }
 .stat-name { font-size: 28rpx; color: #333; }
-.stat-count { font-size: 28rpx; font-weight: 600; color: #7a1733; }
+.stat-count { font-size: 28rpx; font-weight: 600; color: #614961; }
 .stat-empty { color: #999; font-size: 26rpx; text-align: center; padding: 16rpx 0; }
 
 /* 401 游客绑定引导块（替代原 mock 时代不可达的 guest-tip） */
 .guest-block {
-  background: #fff7f8;
-  border: 1rpx solid #f2c7cd;
+  background: #f5f2f5;
+  border: 1rpx solid #d6c8d8;
   border-radius: 16rpx;
   padding: 56rpx 40rpx;
   display: flex;
@@ -105,11 +105,11 @@
 .guest-block-title {
   font-size: 34rpx;
   font-weight: 600;
-  color: #7a1733;
+  color: #614961;
 }
 .guest-block-desc {
   font-size: 26rpx;
-  color: #8c5058;
+  color: #6f5d70;
   line-height: 1.6;
   text-align: center;
   margin: 20rpx 0 36rpx;
@@ -119,7 +119,7 @@
   height: 80rpx;
   line-height: 80rpx;
   border-radius: 40rpx;
-  background: #7a1733;
+  background: #614961;
   color: #fff;
   font-size: 30rpx;
   font-weight: 600;
@@ -158,10 +158,10 @@
 }
 .btn::after { border: none; }
 .btn-primary {
-  background: #7a1733;
+  background: #614961;
   color: #fff;
 }
-.btn-primary:active { background: #3a76e0; }
+.btn-primary:active { background: #4e3a4e; }
 .btn-plain {
   background: #fff;
   color: #666;

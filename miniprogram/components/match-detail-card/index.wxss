@@ -21,7 +21,7 @@
   flex-shrink: 0;
 }
 .mdc-summary { flex: 1; min-width: 0; display: flex; flex-direction: column; overflow-wrap: break-word; }
-.mdc-result { color: #7a1733; font-size: 26rpx; font-weight: 600; margin-top: 8rpx; }
+.mdc-result { color: #614961; font-size: 26rpx; font-weight: 600; margin-top: 8rpx; }
 .mdc-vs { font-size: 30rpx; font-weight: 600; }
 .mdc-time { font-size: 24rpx; color: #999; margin-top: 6rpx; }
 .mdc-status { font-size: 26rpx; font-weight: 600; flex-shrink: 0; }
@@ -39,7 +39,7 @@
 .mdc-value { font-size: 26rpx; color: #333; flex: 1; }
 .mdc-confirmer { color: #33C275; font-weight: 500; }
 .mdc-score { font-size: 32rpx; font-weight: bold; }
-.mdc-link { color: #7a1733; }
+.mdc-link { color: #614961; }
 
 .mdc-status-desc {
   margin-top: 16rpx;
