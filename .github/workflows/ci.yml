@@ -1,10 +1,10 @@
 name: CI
 
 on:
-  push:
-    branches: [main, dev]
+  push:                # 所有分支的 push 都跑检查（A/B/C 各功能分支也覆盖）
   pull_request:
     branches: [main, dev]
+  workflow_dispatch:   # 支持在 Actions 页手动触发
 
 permissions:
   contents: read
