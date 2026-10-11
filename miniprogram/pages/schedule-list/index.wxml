@@ -1,0 +1,28 @@
+<view class="schedule-list">
+  <view wx:if="{{!ready}}" class="notice">正在加载本队赛程…</view>
+  <view wx:elif="{{!authorized}}" class="panel">
+    <view class="title">请先绑定队长身份</view>
+    <view class="hint">队长可以管理本队赛程。</view>
+    <button class="primary" bindtap="onBindIdentity">前往我的</button>
+  </view>
+  <block wx:else>
+    <button class="primary" bindtap="onPublish">发布赛程</button>
+    <view class="notice">按最近更新时间排序，已取消赛程保留供查看。</view>
+    <view wx:if="{{!errorText && !list.length}}" class="panel">
+      <view class="title">暂无未归档赛程</view>
+      <view class="hint">发布第一场比赛后，可在这里查看和管理。</view>
+    </view>
+    <view wx:for="{{list}}" wx:key="_id" class="panel">
+      <view class="heading">
+        <view class="title">{{item.sport}} · {{item.teamName}}</view>
+        <text class="status" style="color: {{item.statusColor}}">{{item.statusLabel}}</text>
+      </view>
+      <view class="rival">对阵 {{item.rival}}</view>
+      <view class="hint">{{item.timeText}}（北京时间）</view>
+      <view class="hint">{{item.location}}</view>
+      <button class="secondary" data-id="{{item._id}}" bindtap="onOpenMatch">{{item.actionLabel}}</button>
+    </view>
+  </block>
+  <view wx:if="{{errorText}}" class="error">{{errorText}}</view>
+  <button wx:if="{{ready && errorText}}" class="secondary" bindtap="onRetry">重新加载</button>
+</view>

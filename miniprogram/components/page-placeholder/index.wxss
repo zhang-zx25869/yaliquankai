@@ -1,0 +1,35 @@
+.placeholder {
+  min-height: 55vh;
+  padding: 96rpx 48rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  color: #333333;
+}
+
+.placeholder-mark {
+  width: 112rpx;
+  height: 112rpx;
+  margin-bottom: 32rpx;
+  border-radius: 56rpx;
+  background: #7a1733;
+  color: #ffffff;
+  font-size: 50rpx;
+  line-height: 112rpx;
+  text-align: center;
+}
+
+.placeholder-title {
+  font-size: 36rpx;
+  font-weight: 600;
+}
+
+.placeholder-desc {
+  margin-top: 16rpx;
+  color: #888888;
+  font-size: 26rpx;
+  line-height: 1.6;
+  text-align: center;
+}
