@@ -1,0 +1,9 @@
+{
+  "name": "ArchiveManager",
+  "version": "1.0.0",
+  "description": "赛后归档：提交比分赛果、单元格销号、云盘媒体链接",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

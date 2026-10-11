@@ -1,0 +1,9 @@
+{
+  "name": "AuthManager",
+  "version": "1.0.0",
+  "description": "身份认证：免密登录 + 激活码绑定",
+  "main": "index.js",
+  "dependencies": {
+    "wx-server-sdk": "~2.6.3"
+  }
+}

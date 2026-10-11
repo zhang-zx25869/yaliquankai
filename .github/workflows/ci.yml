@@ -1,0 +1,30 @@
+name: CI
+
+on:
+  push:                # 所有分支的 push 都跑检查（A/B/C 各功能分支也覆盖）
+  pull_request:
+    branches: [main, dev]
+  workflow_dispatch:   # 支持在 Actions 页手动触发
+
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    name: Lint and test
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run quality checks
+        run: npm run check

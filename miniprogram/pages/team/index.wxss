@@ -1,0 +1,39 @@
+/* B3 代表队栏目（用例19）—— 样式类名与首页观感保持一致 */
+
+page { background: #f6f6f6; color: #302c2d; }
+.home { padding: 32rpx 28rpx 64rpx; }
+.page-heading { font-size: 42rpx; font-weight: 700; }
+.page-subtitle { margin: 10rpx 0 28rpx; font-size: 24rpx; color: #777; }
+.section-title { margin: 32rpx 0 12rpx; font-size: 30rpx; font-weight: 600; }
+.section-count, .count { font-size: 24rpx; color: #888; font-weight: normal; }
+.section-count { margin-bottom: 20rpx; }
+.feedback { padding: 40rpx 24rpx; text-align: center; color: #777; background: #fff; border-radius: 16rpx; font-size: 27rpx; }
+.retry-button { margin: 20rpx 8rpx 0; color: #614961; background: #efeaef; }
+.detail-feedback { margin: -12rpx 0 24rpx; padding: 24rpx; border-radius: 12rpx; font-size: 26rpx; color: #777; background: #fff; }
+
+/* 队长本队管理入口（用例19 第5步） */
+.captain-entry { padding: 28rpx; background: #fff; border-radius: 20rpx; margin-bottom: 24rpx; }
+.entry-title { font-size: 28rpx; font-weight: 600; }
+.entry-actions { display: flex; gap: 16rpx; margin-top: 20rpx; }
+.manage-button { flex: 1; margin: 0; font-size: 26rpx; border-radius: 12rpx; background: #efeaef; color: #614961; }
+
+/* 队伍列表卡片 */
+.team-list { margin-top: 8rpx; }
+.team-card {
+  width: 100%;
+  margin: 0 0 20rpx;
+  padding: 28rpx;
+  text-align: left;
+  background: #fff;
+  border-radius: 20rpx;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.team-card::after { border: none; }
+.team-name { font-size: 30rpx; font-weight: 600; color: #333; }
+.team-sport { font-size: 24rpx; color: #614961; background: #efeaef; border-radius: 10rpx; padding: 6rpx 18rpx; }
+
+/* 选队视图头部 */
+.team-header { margin-bottom: 8rpx; }
+.back-button { margin: 0 0 16rpx; padding: 0 20rpx; font-size: 24rpx; color: #614961; background: #efeaef; border-radius: 12rpx; }
